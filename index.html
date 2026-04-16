@@ -728,10 +728,10 @@ function bindAppEvents(){
   document.querySelectorAll(".nav-btn").forEach(b=>{ b.onclick=()=>{tab=b.dataset.tab;render();}; });
   document.getElementById("btn-add").onclick=()=>{modal="add";form=freshForm();render();};
   document.getElementById("btn-leave").onclick=leaveRoom;
-  document.getElementById("btn-edit-title")?.onclick=()=>{modal="title";render();};
-  document.getElementById("btn-fin")?.onclick=()=>{modal="finance";render();};
-  document.getElementById("btn-budget")?.onclick=()=>{budgetDraft=String(settings.budget);modal="budget";render();};
-  document.getElementById("btn-names")?.onclick=()=>{modal="names";render();};
+  const elTitle=document.getElementById("btn-edit-title"); if(elTitle) elTitle.onclick=()=>{modal="title";render();};
+  const elFin=document.getElementById("btn-fin"); if(elFin) elFin.onclick=()=>{modal="finance";render();};
+  const elBudget=document.getElementById("btn-budget"); if(elBudget) elBudget.onclick=()=>{budgetDraft=String(settings.budget);modal="budget";render();};
+  const elNames=document.getElementById("btn-names"); if(elNames) elNames.onclick=()=>{modal="names";render();};
 
   document.querySelectorAll(".del-btn").forEach(b=>{
     b.onclick=()=>{ if(confirm("確定刪除這筆支出？")) fbDel(b.dataset.key); };
