@@ -24,35 +24,48 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.3;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
 @keyframes toastIn{from{opacity:0;transform:translate(-50%,6px)}to{opacity:1;transform:translate(-50%,0)}}
-@keyframes spin{to{transform:rotate(360deg)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes popIn{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
 
-/* ── Login / Room screen ── */
+/* ── Auth / Setup screens ── */
 .auth-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;text-align:center;background:var(--bg);}
 .auth-emoji{font-size:52px;margin-bottom:16px;}
 .auth-title{font-family:'Noto Serif TC',serif;font-size:26px;font-weight:700;margin-bottom:6px;}
 .auth-sub{font-size:13px;color:var(--sub);margin-bottom:28px;line-height:1.7;}
-.auth-card{background:var(--surface);border-radius:20px;padding:24px 20px;width:100%;border:1px solid var(--border);margin-bottom:12px;}
-.auth-card-title{font-size:11px;font-weight:700;color:var(--sub);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:14px;text-align:left;}
-.auth-input{width:100%;border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;font-size:15px;outline:none;background:var(--surface2);color:var(--text);margin-bottom:10px;}
+.auth-card{background:var(--surface);border-radius:20px;padding:22px 20px;width:100%;border:1px solid var(--border);margin-bottom:12px;text-align:left;}
+.auth-card-title{font-size:10px;font-weight:700;color:var(--sub);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;}
+.auth-input{width:100%;border:1.5px solid var(--border);border-radius:10px;padding:12px 14px;font-size:15px;outline:none;background:var(--surface2);color:var(--text);margin-bottom:10px;display:block;}
 .auth-input:focus{border-color:var(--clay);}
 .auth-input.code{text-align:center;font-size:20px;font-weight:700;letter-spacing:4px;text-transform:uppercase;}
-.auth-btn{width:100%;background:var(--clay);color:var(--surface);border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Noto Serif TC',serif;letter-spacing:.5px;margin-bottom:8px;}
-.auth-btn:disabled{opacity:.5;cursor:not-allowed;}
-.auth-btn-ghost{width:100%;background:none;border:1.5px solid var(--border);border-radius:12px;padding:13px;font-size:13px;color:var(--sub);cursor:pointer;margin-bottom:8px;}
-.auth-divider{font-size:11px;color:var(--mute);margin:8px 0;text-align:center;}
-.auth-error{font-size:12px;color:var(--danger);margin-top:4px;text-align:left;}
-.auth-loading{display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;color:var(--sub);padding:12px 0;}
-.loading-dot{width:6px;height:6px;border-radius:50%;background:var(--clay);animation:pulse 1.2s ease infinite;}
+.auth-btn{width:100%;background:var(--clay);color:var(--surface);border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Noto Serif TC',serif;letter-spacing:.5px;margin-bottom:8px;display:block;}
+.auth-btn:disabled{opacity:.55;cursor:not-allowed;}
+.auth-divider{font-size:11px;color:var(--mute);margin:6px 0;text-align:center;}
+.auth-error{font-size:12px;color:var(--danger);margin:4px 0 8px;padding:8px 10px;background:rgba(184,112,112,.08);border-radius:8px;}
+.auth-loading{display:flex;align-items:center;justify-content:center;gap:8px;padding:20px 0;}
+.loading-dot{width:7px;height:7px;border-radius:50%;background:var(--clay);animation:pulse 1.2s ease infinite;}
 .loading-dot:nth-child(2){animation-delay:.2s;}
 .loading-dot:nth-child(3){animation-delay:.4s;}
+.hint{font-size:11px;color:var(--mute);margin-top:4px;line-height:1.5;}
+
+/* ── Identity picker ── */
+.identity-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;width:100%;margin-top:4px;}
+.identity-card{background:var(--surface);border:2px solid var(--border);border-radius:20px;padding:28px 16px;cursor:pointer;transition:all .2s;text-align:center;animation:popIn .3s ease;}
+.identity-card:hover{border-color:var(--clay);transform:translateY(-2px);box-shadow:0 6px 20px rgba(184,152,128,.2);}
+.identity-card:active{transform:scale(.97);}
+.identity-emoji{font-size:42px;margin-bottom:10px;}
+.identity-name{font-size:16px;font-weight:700;color:var(--text);}
+.identity-room{font-size:11px;color:var(--mute);margin-top:4px;}
 
 /* ── Header ── */
-.header{position:sticky;top:0;z-index:50;display:flex;justify-content:space-between;align-items:center;padding:16px 20px 12px;background:rgba(242,239,234,.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);}
-.header-title{font-family:'Noto Serif TC',serif;font-size:17px;font-weight:700;letter-spacing:.5px;}
-.header-sub{font-size:10px;color:var(--mute);margin-top:2px;letter-spacing:.5px;display:flex;align-items:center;gap:4px;}
+.header{position:sticky;top:0;z-index:50;display:flex;justify-content:space-between;align-items:center;padding:14px 18px 12px;background:rgba(242,239,234,.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);}
+.header-title-wrap{display:flex;align-items:center;gap:6px;}
+.header-title{font-family:'Noto Serif TC',serif;font-size:16px;font-weight:700;letter-spacing:.3px;}
+.header-title-edit{background:none;border:none;cursor:pointer;font-size:13px;color:var(--mute);padding:2px 4px;line-height:1;}
+.header-sub{font-size:10px;color:var(--mute);margin-top:3px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;}
 .sync-dot{width:5px;height:5px;border-radius:50%;background:var(--green);flex-shrink:0;}
 .sync-dot.syncing{animation:pulse 1s infinite;background:var(--warn);}
+.who-badge{background:var(--surface2);border-radius:20px;padding:2px 8px;font-size:10px;color:var(--sub);border:1px solid var(--border);}
+.edit-btn{background:none;border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-size:11px;color:var(--sub);cursor:pointer;white-space:nowrap;flex-shrink:0;}
 .add-btn{width:38px;height:38px;border-radius:50%;background:var(--clay);border:none;color:var(--surface);font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(184,152,128,.35);flex-shrink:0;}
 
 /* ── Nav ── */
@@ -60,7 +73,6 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.3;}
 .nav-btn{flex:1;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;color:var(--mute);padding:4px 0;font-size:10px;letter-spacing:.5px;gap:3px;transition:color .2s;}
 .nav-btn.active{color:var(--clay);}
 .nav-icon{font-size:20px;}
-
 .main{padding:14px 16px 0;animation:fadeUp .35s ease;}
 
 /* ── Cards ── */
@@ -76,10 +88,9 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.3;}
 .hero-card{background:var(--surface);border-radius:16px;padding:14px 20px;margin-bottom:12px;border:1px solid var(--border);text-align:center;}
 .hero-label{font-size:11px;color:var(--mute);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px;}
 .hero-amt{font-family:'Noto Serif TC',serif;font-size:26px;font-weight:700;letter-spacing:-1px;}
-.hero-sub{display:flex;justify-content:center;gap:20px;margin-top:7px;}
+.hero-sub{display:flex;justify-content:center;gap:20px;margin-top:7px;flex-wrap:wrap;}
 .hero-partner{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--sub);}
 .hero-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
-.edit-btn{background:none;border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-size:11px;color:var(--sub);cursor:pointer;white-space:nowrap;flex-shrink:0;}
 .warn-banner{margin-top:9px;background:rgba(196,154,122,.12);border:1px solid rgba(196,154,122,.35);border-radius:8px;padding:7px 10px;font-size:11px;color:var(--warn);}
 
 /* ── Records ── */
@@ -90,7 +101,8 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.3;}
 .rec-note{font-size:14px;font-weight:500;}
 .rec-meta{font-size:11px;color:var(--mute);margin-top:1px;}
 .rec-amt{font-size:13px;font-weight:700;color:var(--clay);white-space:nowrap;}
-.del-btn{background:none;border:none;cursor:pointer;font-size:16px;color:var(--mute);padding:0 2px;opacity:0;transition:opacity .2s;}
+.del-btn{background:none;border:none;cursor:pointer;font-size:16px;color:var(--mute);padding:0 2px;opacity:0;transition:opacity .2s;line-height:1;}
+.del-placeholder{width:22px;flex-shrink:0;}
 .empty{text-align:center;color:var(--mute);padding:20px 0;font-size:13px;}
 
 /* ── Calendar ── */
@@ -101,17 +113,23 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.3;}
 .cal-cell.selected{background:rgba(184,152,128,.15);outline:1.5px solid var(--clay);}
 .cal-day{font-size:12px;font-weight:500;}
 .cal-dot{width:4px;height:4px;border-radius:50%;background:var(--clay);}
+
+/* ── Stat bars ── */
 .bar-track{display:flex;border-radius:8px;overflow:hidden;height:28px;margin-top:4px;}
 .bar-a{background:var(--rose);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--surface);font-weight:600;min-width:16%;transition:width .5s;}
 .bar-b{background:var(--sage);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--surface);font-weight:600;min-width:16%;transition:width .5s;}
 .partner-card{background:var(--surface2);border-radius:12px;padding:12px 14px;}
+
+/* ── Legend ── */
 .legend-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--surface2);}
 .legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
 .legend-label{flex:1;font-size:13px;color:var(--sub);}
 .legend-val{font-size:13px;font-weight:600;}
+
+/* ── Mini bar chart ── */
 .mini-bar-wrap{display:flex;align-items:flex-end;gap:6px;height:80px;padding:0 4px;}
 .mini-bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;}
-.mini-bar{width:100%;background:var(--clay);border-radius:3px 3px 0 0;transition:height .5s;}
+.mini-bar{width:100%;background:var(--clay);border-radius:3px 3px 0 0;}
 .mini-bar-label{font-size:9px;color:var(--mute);}
 
 /* ── Modals ── */
@@ -123,14 +141,12 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.3;}
 .field label{font-size:10px;color:var(--sub);font-weight:700;display:block;margin-bottom:6px;letter-spacing:1px;text-transform:uppercase;}
 .field input{width:100%;border:1.5px solid var(--border);border-radius:9px;padding:9px 12px;font-size:14px;outline:none;color:var(--text);background:var(--surface2);}
 .field input:focus{border-color:var(--clay);}
-.hint{font-size:10px;color:var(--mute);margin-top:4px;}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;}
 .cat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
 .cat-chip{border:1.5px solid var(--border);border-radius:8px;padding:7px 3px;font-size:11px;cursor:pointer;background:var(--surface2);color:var(--sub);text-align:center;transition:all .15s;}
-.paid-row{display:flex;gap:10px;}
-.paid-btn{flex:1;border:1.5px solid var(--border);border-radius:10px;padding:10px;background:var(--surface2);cursor:pointer;font-size:13px;color:var(--sub);transition:all .2s;}
+.paid-display{background:var(--surface2);border-radius:10px;padding:10px 14px;font-size:14px;color:var(--sub);border:1.5px solid var(--border);}
 .submit-btn{width:100%;background:var(--clay);color:var(--surface);border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px;letter-spacing:1px;font-family:'Noto Serif TC',serif;}
-.submit-btn:disabled{opacity:.5;cursor:not-allowed;}
+.submit-btn:disabled{opacity:.55;cursor:not-allowed;}
 .quick-btns{display:flex;gap:8px;margin-bottom:4px;}
 .quick-btn{flex:1;border:1.5px solid var(--border);border-radius:8px;padding:8px 2px;font-size:12px;cursor:pointer;background:var(--surface2);color:var(--sub);transition:all .15s;}
 .quick-btn.active{background:var(--clay);color:var(--surface);border-color:var(--clay);}
@@ -147,130 +163,136 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.3;}
 <div class="toast" id="toast"></div>
 
 <script type="module">
-import { initializeApp }       from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { initializeApp }  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getDatabase, ref, onValue, set, push, remove, update, get }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 import { getAuth, signInAnonymously, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-// ── Firebase Config ───────────────────────────────────────────────────────────
 const fbApp = initializeApp({
-  apiKey:            "AIzaSyB6nRaty2eGUyCh6OmNMXcA--ZQGXhQqTs",
-  authDomain:        "budget-1a242.firebaseapp.com",
-  projectId:         "budget-1a242",
-  storageBucket:     "budget-1a242.firebasestorage.app",
-  messagingSenderId: "859928758854",
-  appId:             "1:859928758854:web:516f763d92b206e3b29847",
-  databaseURL:       "https://budget-1a242-default-rtdb.asia-southeast1.firebasedatabase.app"
+  apiKey:"AIzaSyB6nRaty2eGUyCh6OmNMXcA--ZQGXhQqTs",
+  authDomain:"budget-1a242.firebaseapp.com",
+  projectId:"budget-1a242",
+  storageBucket:"budget-1a242.firebasestorage.app",
+  messagingSenderId:"859928758854",
+  appId:"1:859928758854:web:516f763d92b206e3b29847",
+  databaseURL:"https://budget-1a242-default-rtdb.asia-southeast1.firebasedatabase.app"
 });
-const db   = getDatabase(fbApp);
-const auth = getAuth(fbApp);
+const db=getDatabase(fbApp), auth=getAuth(fbApp);
 
-// ── Constants ─────────────────────────────────────────────────────────────────
-const PARTNERS   = ["🌸 小美","🤡 小丑"];
-const CATEGORIES = ["🍜 餐飲","🚗 交通","🎬 娛樂","🛒 購物","🏠 居家","✈️ 旅遊","💊 醫療","💰 其他"];
-const CAT_COLORS = ["#C4A89A","#9BAF9E","#B89880","#8FA0AE","#AFA3BC","#C8B98A","#A3B4B0","#D4B5AD"];
+const CATEGORIES=["🍜 餐飲","🚗 交通","🎬 娛樂","🛒 購物","🏠 居家","✈️ 旅遊","💊 醫療","💰 其他"];
+const CAT_COLORS=["#C4A89A","#9BAF9E","#B89880","#8FA0AE","#AFA3BC","#C8B98A","#A3B4B0","#D4B5AD"];
+const P_COLORS=["var(--rose)","var(--sage)"];
 
-// ── App State ─────────────────────────────────────────────────────────────────
-let authUser    = null;   // Firebase Auth user
-let roomId      = localStorage.getItem("coup_room") || null;
-let authedRoom  = false;  // passed password check this session
-let tab         = "home";
-let records     = {};
-let settings    = { budget:10000, salary:60000, savingsGoal:15000, lastSaved:12000 };
-let calMonth    = { y:new Date().getFullYear(), m:new Date().getMonth() };
-let calSel      = null;
-let aiLoading   = false;
-let syncing     = false;
-let modal       = null;
-let form        = freshForm();
-let budgetDraft = "";
-let finDraft    = {};
-let roomDraft   = { code:"", password:"", confirmPw:"" };
-let authError   = "";
-let authLoading = false;
+// ── State ─────────────────────────────────────────────────────────────────────
+let authUser=null;
+let roomId=null;           // set after password verified
+let myIndex=null;          // 0 or 1 — picked each session
+// screen: 'loading' | 'login' | 'setup' | 'identity' | 'app'
+let screen="loading";
+let tab="home", records={}, syncing=false, modal=null;
+let settings={
+  budget:10000,salary:60000,savingsGoal:15000,lastSaved:12000,
+  bookTitle:"我們的帳本",names:["小美","小丑"],nameEmojis:["🌸","🤡"]
+};
+let calMonth={y:new Date().getFullYear(),m:new Date().getMonth()}, calSel=null;
+let aiLoading=false;
+let form=freshForm(), budgetDraft="";
+let authError="";
+let setupDraft={bookTitle:"我們的帳本",name0:"小美",emoji0:"🌸",name1:"小丑",emoji1:"🤡"};
 let unsubRec, unsubSet;
 
-function freshForm(){ return { date:today(), amount:"", category:CATEGORIES[0], paidBy:0, note:"", desc:"" }; }
+function freshForm(){ return {date:today(),amount:"",category:CATEGORIES[0],note:"",desc:""}; }
 function today(){ return new Date().toISOString().slice(0,10); }
-function thisMonthKey(){ const n=new Date(); return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`; }
+function thisMonthKey(){ const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`; }
 function genCode(){ return Math.random().toString(36).slice(2,8).toUpperCase(); }
+function names(){ return settings.names||["小美","小丑"]; }
+function emojis(){ return settings.nameEmojis||["🌸","🤡"]; }
+function label(i){ return `${emojis()[i]} ${names()[i]}`; }
 
-// ── Hash password (SHA-256) ───────────────────────────────────────────────────
 async function hashPw(pw){
-  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(pw));
+  const buf=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(pw));
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,"0")).join("");
 }
 
-// ── Firebase helpers ──────────────────────────────────────────────────────────
+// ── Firebase ──────────────────────────────────────────────────────────────────
 function rRef(...p){ return ref(db,["rooms",roomId,...p].join("/")); }
-function raRef(...p){ return ref(db,["roomAuth",roomId,...p].join("/")); }
 
 function subscribeRoom(){
   if(unsubRec) unsubRec();
   if(unsubSet) unsubSet();
-  unsubRec = onValue(rRef("records"), s=>{ records=s.val()||{}; render(); });
-  unsubSet = onValue(rRef("settings"), s=>{ if(s.val()) settings={...settings,...s.val()}; render(); });
+  unsubRec=onValue(rRef("records"),s=>{ records=s.val()||{}; if(screen==="app") render(); });
+  unsubSet=onValue(rRef("settings"),s=>{ if(s.val()) settings={...settings,...s.val()}; if(screen==="app"||screen==="identity") render(); });
 }
 
 async function fbAdd(rec){ syncing=true; render(); await push(rRef("records"),rec); syncing=false; }
 async function fbDel(key){ await remove(rRef("records",key)); }
-async function fbSetSettings(p){ await update(rRef("settings"),p); }
+async function fbSave(p){ await update(rRef("settings"),p); settings={...settings,...p}; }
 
-// ── Room Auth ─────────────────────────────────────────────────────────────────
-async function createRoom(code, pw){
-  authLoading=true; authError="";
-  // Show a simple inline loading state without full re-render (avoids DOM teardown)
+// ── Auth ──────────────────────────────────────────────────────────────────────
+async function createRoom(code,pw){
   const btn=document.getElementById("btn-create");
-  if(btn){ btn.disabled=true; btn.textContent="建立中…"; }
-  try {
-    const [hash, existing] = await Promise.all([
+  if(btn){btn.disabled=true;btn.textContent="建立中…";}
+  authError="";
+  try{
+    const[hash,existing]=await Promise.all([
       hashPw(pw),
-      get(ref(db, `roomAuth/${code}/pwHash`))
+      get(ref(db,`roomAuth/${code}/pwHash`))
     ]);
-    if(existing.exists()){
-      authError="此房間碼已存在，請用不同的碼或直接加入";
-      authLoading=false; render(); return;
-    }
-    await set(ref(db, `roomAuth/${code}`), { pwHash: hash, createdAt: Date.now() });
-    localStorage.setItem("coup_room", code);
-    roomId = code; authedRoom = true;
-    authLoading=false;
+    if(existing.exists()){ authError="此房間碼已存在，請換一個"; render(); return; }
+    await set(ref(db,`roomAuth/${code}`),{pwHash:hash,createdAt:Date.now()});
+    roomId=code;
     subscribeRoom();
-    showToast(`✦ 房間 ${code} 建立成功！把房間碼和密碼分享給對方`);
-  } catch(e){ authError="建立失敗，請重試"; authLoading=false; render(); }
+    screen="setup";
+    render();
+  }catch(e){ authError="建立失敗，請重試"; render(); }
 }
 
-async function joinRoom(code, pw){
-  authLoading=true; authError="";
+async function joinRoom(code,pw){
   const btn=document.getElementById("btn-join");
-  if(btn){ btn.disabled=true; btn.textContent="驗證中…"; }
-  try {
-    const [hash, snap] = await Promise.all([
+  if(btn){btn.disabled=true;btn.textContent="驗證中…";}
+  authError="";
+  try{
+    const[hash,snap]=await Promise.all([
       hashPw(pw),
-      get(ref(db, `roomAuth/${code}/pwHash`))
+      get(ref(db,`roomAuth/${code}/pwHash`))
     ]);
-    if(!snap.exists()){
-      authError="找不到此房間，請確認房間碼"; authLoading=false; render(); return;
-    }
-    if(hash !== snap.val()){
-      authError="密碼錯誤，請再試一次"; authLoading=false; render(); return;
-    }
-    localStorage.setItem("coup_room", code);
-    roomId = code; authedRoom = true;
-    authLoading=false;
+    if(!snap.exists()){ authError="找不到此房間，請確認房間碼"; render(); return; }
+    if(hash!==snap.val()){ authError="密碼錯誤，請再試一次"; render(); return; }
+    roomId=code;
     subscribeRoom();
-    showToast(`✦ 歡迎回來！房間 ${code}`);
-  } catch(e){ authError="加入失敗，請重試"; authLoading=false; render(); }
+    screen="identity";
+    render();
+  }catch(e){ authError="加入失敗，請重試"; render(); }
+}
+
+async function finishSetup(){
+  const btn=document.getElementById("btn-setup-done");
+  if(btn){btn.disabled=true;btn.textContent="儲存中…";}
+  const patch={
+    bookTitle:setupDraft.bookTitle||"我們的帳本",
+    names:[setupDraft.name0||"小美",setupDraft.name1||"小丑"],
+    nameEmojis:[setupDraft.emoji0||"🌸",setupDraft.emoji1||"🤡"]
+  };
+  await fbSave(patch);
+  screen="identity";
+  render();
+}
+
+function pickIdentity(idx){
+  myIndex=idx;
+  screen="app";
+  form=freshForm();
+  render();
 }
 
 function leaveRoom(){
-  if(!confirm("確定要離開房間嗎？\n（資料不會消失，下次用房間碼＋密碼可以再進來）")) return;
+  if(!confirm("確定要離開？\n（資料不會消失，下次用房間碼＋密碼可再進來）")) return;
   if(unsubRec) unsubRec();
   if(unsubSet) unsubSet();
-  roomId=null; authedRoom=false;
-  localStorage.removeItem("coup_room");
-  records={}; settings={budget:10000,salary:60000,savingsGoal:15000,lastSaved:12000};
+  roomId=null; myIndex=null; screen="login"; authError="";
+  records={}; settings={budget:10000,salary:60000,savingsGoal:15000,lastSaved:12000,
+    bookTitle:"我們的帳本",names:["小美","小丑"],nameEmojis:["🌸","🤡"]};
   render();
 }
 
@@ -280,7 +302,7 @@ async function aiClassify(desc){
     const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:80,
         messages:[{role:"user",content:`根據消費描述，從以下分類選一個最適合的，只回傳分類名稱，不要其他文字：\n分類：${CATEGORIES.join("、")}\n描述：${desc}`}]})});
-    const d=await r.json();const t=d.content?.[0]?.text?.trim();
+    const d=await r.json(); const t=d.content?.[0]?.text?.trim();
     return CATEGORIES.includes(t)?t:"💰 其他";
   }catch{return "💰 其他";}
 }
@@ -289,7 +311,7 @@ async function aiNote(desc){
     const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:40,
         messages:[{role:"user",content:`為這筆消費寫一個簡短備註（10字以內，中文），只回傳備註：${desc}`}]})});
-    const d=await r.json();return d.content?.[0]?.text?.trim()||desc;
+    const d=await r.json(); return d.content?.[0]?.text?.trim()||desc;
   }catch{return desc;}
 }
 
@@ -299,100 +321,150 @@ function totalByPartner(){ const t=[0,0]; recList().forEach(r=>{t[r.paidBy]+=r.a
 function thisMonthSpent(){ return recList().filter(r=>r.date.slice(0,7)===thisMonthKey()).reduce((s,r)=>s+r.amount,0); }
 function catData(){ const m={}; recList().forEach(r=>{m[r.category]=(m[r.category]||0)+r.amount;}); return Object.entries(m).map(([n,v])=>({name:n,value:v})); }
 function barData(){ const mo={}; recList().forEach(r=>{const k=r.date.slice(0,7);mo[k]=(mo[k]||0)+r.amount;}); return Object.entries(mo).sort().slice(-6).map(([m,v])=>({name:m.slice(5)+"月",value:v})); }
-function calDays(){ const{y,m}=calMonth,first=new Date(y,m,1).getDay(),days=new Date(y,m+1,0).getDate(),g=[];for(let i=0;i<first;i++)g.push(null);for(let d=1;d<=days;d++){const ds=`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`,dr=recList().filter(r=>r.date===ds);g.push({d,dateStr:ds,recs:dr,total:dr.reduce((s,r)=>s+r.amount,0)});}return g; }
-function monthTotal(){ const{y,m}=calMonth;return recList().filter(r=>{const d=new Date(r.date);return d.getFullYear()===y&&d.getMonth()===m;}).reduce((s,r)=>s+r.amount,0); }
+function calDays(){ const{y,m}=calMonth,first=new Date(y,m,1).getDay(),days=new Date(y,m+1,0).getDate(),g=[];for(let i=0;i<first;i++)g.push(null);for(let d=1;d<=days;d++){const ds=`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`,dr=recList().filter(r=>r.date===ds);g.push({d,dateStr:ds,recs:dr,total:dr.reduce((s,r)=>s+r.amount,0)});}return g;}
+function monthTotal(){ const{y,m}=calMonth;return recList().filter(r=>{const d=new Date(r.date);return d.getFullYear()===y&&d.getMonth()===m;}).reduce((s,r)=>s+r.amount,0);}
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
 let toastTimer;
-function showToast(msg){
-  clearTimeout(toastTimer);
-  const el=document.getElementById("toast");
-  el.textContent=msg; el.style.display="block";
-  toastTimer=setTimeout(()=>{el.style.display="none";},2600);
-}
+function showToast(msg){ clearTimeout(toastTimer); const el=document.getElementById("toast"); el.textContent=msg; el.style.display="block"; toastTimer=setTimeout(()=>{el.style.display="none";},2600); }
 
-// ── Render ────────────────────────────────────────────────────────────────────
+// ── Render router ─────────────────────────────────────────────────────────────
 function render(){
   const app=document.getElementById("app");
-  if(!authUser){ app.innerHTML=renderLoading(); return; }
-  if(!roomId || !authedRoom){ app.innerHTML=renderAuthScreen(); bindAuthEvents(); return; }
-  app.innerHTML=renderMain(); bindMainEvents();
+  if(screen==="loading"){ app.innerHTML=`<div class="auth-screen"><div class="auth-loading"><div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div></div></div>`; return; }
+  if(screen==="login")   { app.innerHTML=renderLogin();    bindLoginEvents();    return; }
+  if(screen==="setup")   { app.innerHTML=renderSetup();    bindSetupEvents();    return; }
+  if(screen==="identity"){ app.innerHTML=renderIdentity(); bindIdentityEvents(); return; }
+  app.innerHTML=renderApp(); bindAppEvents();
 }
 
-function renderLoading(){
-  return `<div class="auth-screen"><div class="auth-loading"><div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div></div></div>`;
-}
-
-// ── Auth Screen ───────────────────────────────────────────────────────────────
-function renderAuthScreen(){
-  if(authLoading) return `<div class="auth-screen"><div class="auth-loading"><div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div></div><div style="font-size:13px;color:var(--sub);margin-top:12px">驗證中…</div></div>`;
-
+// ── Login ─────────────────────────────────────────────────────────────────────
+function renderLogin(){
   return `
   <div class="auth-screen">
     <div class="auth-emoji">💑</div>
     <div class="auth-title">我們的帳本</div>
     <div class="auth-sub">輸入房間碼與密碼進入<br>或建立一個新房間邀請對方</div>
 
-    <!-- Join existing -->
     <div class="auth-card">
       <div class="auth-card-title">加入已有的房間</div>
-      <input class="auth-input code" id="join-code" placeholder="房間碼" maxlength="8" value="${roomDraft.code}" autocomplete="off"/>
-      <input class="auth-input" id="join-pw" type="password" placeholder="密碼" value="${roomDraft.password}" autocomplete="current-password"/>
+      <input class="auth-input code" id="join-code" placeholder="房間碼" maxlength="8" autocomplete="off"/>
+      <input class="auth-input" id="join-pw" type="password" placeholder="密碼" autocomplete="current-password"/>
       ${authError?`<div class="auth-error">⚠ ${authError}</div>`:""}
-      <button class="auth-btn" id="btn-join" style="margin-top:10px">進入房間</button>
+      <button class="auth-btn" id="btn-join">進入房間</button>
     </div>
 
     <div class="auth-divider">── 或 ──</div>
 
-    <!-- Create new -->
     <div class="auth-card">
       <div class="auth-card-title">建立新房間</div>
       <input class="auth-input code" id="new-code" placeholder="自訂房間碼（留空自動產生）" maxlength="8" autocomplete="off"/>
       <input class="auth-input" id="new-pw" type="password" placeholder="設定密碼" autocomplete="new-password"/>
-      <input class="auth-input" id="new-pw2" type="password" placeholder="確認密碼" autocomplete="new-password"/>
+      <input class="auth-input" id="new-pw2" type="password" placeholder="確認密碼" autocomplete="new-password" style="margin-bottom:0"/>
       <button class="auth-btn" id="btn-create" style="margin-top:10px">建立並進入</button>
-      <div class="hint" style="text-align:center;margin-top:6px">建好後把房間碼和密碼分享給對方，兩人就能共用同一本帳 💌</div>
+      <div class="hint" style="text-align:center">建好後把房間碼和密碼分享給對方 💌</div>
     </div>
   </div>`;
 }
 
-function bindAuthEvents(){
-  const joinCode=document.getElementById("join-code");
-  const joinPw=document.getElementById("join-pw");
-  const newCode=document.getElementById("new-code");
-  const newPw=document.getElementById("new-pw");
-  const newPw2=document.getElementById("new-pw2");
-
-  if(joinCode) joinCode.oninput=e=>{roomDraft.code=e.target.value.toUpperCase();e.target.value=roomDraft.code;};
-  if(newCode) newCode.oninput=e=>{roomDraft.code=e.target.value.toUpperCase();e.target.value=roomDraft.code;};
+function bindLoginEvents(){
+  const jc=document.getElementById("join-code"), jp=document.getElementById("join-pw");
+  const nc=document.getElementById("new-code"), np=document.getElementById("new-pw"), np2=document.getElementById("new-pw2");
+  if(jc) jc.oninput=e=>{e.target.value=e.target.value.toUpperCase();};
+  if(nc) nc.oninput=e=>{e.target.value=e.target.value.toUpperCase();};
 
   document.getElementById("btn-join").onclick=async()=>{
-    const code=(joinCode.value||"").trim().toUpperCase();
-    const pw=(joinPw.value||"").trim();
+    const code=(jc?.value||"").trim().toUpperCase(), pw=(jp?.value||"").trim();
     if(!code){ authError="請輸入房間碼"; render(); return; }
     if(!pw){ authError="請輸入密碼"; render(); return; }
-    await joinRoom(code, pw);
+    await joinRoom(code,pw);
   };
-
   document.getElementById("btn-create").onclick=async()=>{
-    const code=(newCode.value||"").trim().toUpperCase()||genCode();
-    const pw=(newPw.value||"").trim();
-    const pw2=(newPw2.value||"").trim();
+    const code=(nc?.value||"").trim().toUpperCase()||genCode();
+    const pw=(np?.value||"").trim(), pw2=(np2?.value||"").trim();
     if(!pw){ authError="請設定密碼"; render(); return; }
     if(pw.length<4){ authError="密碼至少 4 個字元"; render(); return; }
     if(pw!==pw2){ authError="兩次密碼不一致"; render(); return; }
-    await createRoom(code, pw);
+    await createRoom(code,pw);
   };
+  jp?.addEventListener("keydown",e=>{ if(e.key==="Enter") document.getElementById("btn-join")?.click(); });
+  np2?.addEventListener("keydown",e=>{ if(e.key==="Enter") document.getElementById("btn-create")?.click(); });
+}
 
-  // Enter key support — guard against null (elements disappear during loading render)
-  if(joinPw) joinPw.onkeydown=e=>{ if(e.key==="Enter") document.getElementById("btn-join")?.click(); };
-  if(newPw2) newPw2.onkeydown=e=>{ if(e.key==="Enter") document.getElementById("btn-create")?.click(); };
+// ── Setup (new room) ──────────────────────────────────────────────────────────
+function renderSetup(){
+  const d=setupDraft;
+  return `
+  <div class="auth-screen" style="justify-content:flex-start;padding-top:40px;overflow-y:auto">
+    <div class="auth-emoji">✏️</div>
+    <div class="auth-title">設定帳本</div>
+    <div class="auth-sub">幫帳本取個名字，並告訴我你們叫什麼</div>
+    <div class="auth-card" style="width:100%">
+      <div class="auth-card-title">帳本名稱</div>
+      <input class="auth-input" id="s-title" placeholder="我們的帳本" value="${d.bookTitle}" style="margin-bottom:0"/>
+    </div>
+    <div class="auth-card" style="width:100%">
+      <div class="auth-card-title">第一位</div>
+      <div style="display:flex;gap:8px">
+        <input class="auth-input" id="s-e0" placeholder="🌸" value="${d.emoji0}" style="width:60px;text-align:center;font-size:22px;flex-shrink:0;margin-bottom:0"/>
+        <input class="auth-input" id="s-n0" placeholder="小美" value="${d.name0}" style="flex:1;margin-bottom:0"/>
+      </div>
+    </div>
+    <div class="auth-card" style="width:100%">
+      <div class="auth-card-title">第二位</div>
+      <div style="display:flex;gap:8px">
+        <input class="auth-input" id="s-e1" placeholder="🤡" value="${d.emoji1}" style="width:60px;text-align:center;font-size:22px;flex-shrink:0;margin-bottom:0"/>
+        <input class="auth-input" id="s-n1" placeholder="小丑" value="${d.name1}" style="flex:1;margin-bottom:0"/>
+      </div>
+    </div>
+    <button class="auth-btn" id="btn-setup-done" style="width:100%;margin-top:4px">完成，進入帳本 →</button>
+    <div class="hint" style="text-align:center;margin-top:6px">這些都可以在帳本裡隨時修改</div>
+  </div>`;
+}
+
+function bindSetupEvents(){
+  document.getElementById("s-title").oninput=e=>{setupDraft.bookTitle=e.target.value;};
+  document.getElementById("s-e0").oninput=e=>{setupDraft.emoji0=e.target.value;};
+  document.getElementById("s-n0").oninput=e=>{setupDraft.name0=e.target.value;};
+  document.getElementById("s-e1").oninput=e=>{setupDraft.emoji1=e.target.value;};
+  document.getElementById("s-n1").oninput=e=>{setupDraft.name1=e.target.value;};
+  document.getElementById("btn-setup-done").onclick=finishSetup;
+}
+
+// ── Identity picker ───────────────────────────────────────────────────────────
+function renderIdentity(){
+  const n=names(),e=emojis(),title=settings.bookTitle||"我們的帳本";
+  return `
+  <div class="auth-screen">
+    <div style="font-size:13px;color:var(--mute);margin-bottom:6px;letter-spacing:1px;text-transform:uppercase">${title}</div>
+    <div class="auth-title" style="font-size:22px">今天你是誰？</div>
+    <div class="auth-sub">選擇你的身份進入帳本</div>
+    <div class="identity-grid">
+      <div class="identity-card" id="pick-0">
+        <div class="identity-emoji">${e[0]}</div>
+        <div class="identity-name">${n[0]}</div>
+        <div class="identity-room">房間 ${roomId}</div>
+      </div>
+      <div class="identity-card" id="pick-1">
+        <div class="identity-emoji">${e[1]}</div>
+        <div class="identity-name">${n[1]}</div>
+        <div class="identity-room">房間 ${roomId}</div>
+      </div>
+    </div>
+    <button style="margin-top:20px;background:none;border:none;font-size:12px;color:var(--mute);cursor:pointer;text-decoration:underline;" id="btn-back-login">← 換個房間</button>
+  </div>`;
+}
+
+function bindIdentityEvents(){
+  document.getElementById("pick-0").onclick=()=>pickIdentity(0);
+  document.getElementById("pick-1").onclick=()=>pickIdentity(1);
+  document.getElementById("btn-back-login").onclick=()=>{ if(unsubRec)unsubRec();if(unsubSet)unsubSet();roomId=null;screen="login";authError="";render(); };
 }
 
 // ── Main App ──────────────────────────────────────────────────────────────────
-function renderMain(){
+function renderApp(){
   const tbp=totalByPartner(),total=tbp[0]+tbp[1],spent=thisMonthSpent();
-  const{budget,salary,savingsGoal,lastSaved}=settings;
+  const{budget,salary,savingsGoal,lastSaved,bookTitle}=settings;
   const budgetPct=budget>0?Math.min(spent/budget*100,100):0;
   const budgetLeft=budget-spent,budgetOver=budgetLeft<0;
   const proj=salary-spent,savRate=savingsGoal>0?Math.min(proj/savingsGoal*100,100):0;
@@ -402,14 +474,18 @@ function renderMain(){
 
   return `
   <header class="header">
-    <div>
-      <div class="header-title">我們的帳本</div>
+    <div style="min-width:0">
+      <div class="header-title-wrap">
+        <span class="header-title">${bookTitle||"我們的帳本"}</span>
+        <button class="header-title-edit" id="btn-edit-title">✎</button>
+      </div>
       <div class="header-sub">
         <span class="sync-dot ${syncing?"syncing":""}"></span>
-        房間 ${roomId} · ${syncing?"同步中…":"已同步"}
+        <span class="who-badge">${label(myIndex)}</span>
+        <span>${syncing?"同步中…":"已同步"}</span>
       </div>
     </div>
-    <div style="display:flex;gap:8px;align-items:center">
+    <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
       <button class="edit-btn" id="btn-leave">離開</button>
       <button class="add-btn" id="btn-add">＋</button>
     </div>
@@ -418,7 +494,7 @@ function renderMain(){
   <main class="main">
     ${tab==="home"  ? renderHome(tbp,total,spent,budget,budgetPct,budgetLeft,budgetOver,budgetBarColor,salary,savingsGoal,lastSaved,proj,savRate,lastRate,savColor) : ""}
     ${tab==="chart" ? renderChart() : ""}
-    ${tab==="cal"   ? renderCal() : ""}
+    ${tab==="cal"   ? renderCal()   : ""}
     ${tab==="stat"  ? renderStat(tbp,total) : ""}
   </main>
 
@@ -430,6 +506,8 @@ function renderMain(){
   ${modal==="add"     ? renderAddModal()    : ""}
   ${modal==="budget"  ? renderBudgetModal() : ""}
   ${modal==="finance" ? renderFinModal()    : ""}
+  ${modal==="names"   ? renderNamesModal()  : ""}
+  ${modal==="title"   ? renderTitleModal()  : ""}
   `;
 }
 
@@ -492,7 +570,7 @@ function renderHome(tbp,total,spent,budget,budgetPct,budgetLeft,budgetOver,budge
     <div class="hero-label">本期總支出</div>
     <div class="hero-amt">NT$ ${total.toLocaleString()}</div>
     <div class="hero-sub">
-      ${PARTNERS.map((p,i)=>`<span class="hero-partner"><span class="hero-dot" style="background:${i===0?"var(--rose)":"var(--sage)"}"></span>${p}　<b>NT$ ${tbp[i].toLocaleString()}</b></span>`).join("")}
+      ${names().map((n,i)=>`<span class="hero-partner"><span class="hero-dot" style="background:${P_COLORS[i]}"></span>${emojis()[i]} ${n}　<b>NT$ ${tbp[i].toLocaleString()}</b></span>`).join("")}
     </div>
   </div>
 
@@ -501,13 +579,18 @@ function renderHome(tbp,total,spent,budget,budgetPct,budgetLeft,budgetOver,budge
   <div class="card">
     <div class="card-title">支出明細</div>
     ${recs.length===0?`<div class="empty">還沒有記錄，快來記第一筆！</div>`:""}
-    ${recs.map(r=>`
-      <div class="rec-row">
+    ${recs.map(r=>{
+      const mine=r.paidBy===myIndex;
+      return `<div class="rec-row">
         <div class="rec-dot" style="background:${CAT_COLORS[CATEGORIES.indexOf(r.category)]||"#C4A89A"}"></div>
-        <div style="flex:1"><div class="rec-note">${r.note||r.category.replace(/^\S+\s/,"")}</div><div class="rec-meta">${r.date} · ${r.category.split(" ")[0]} · ${PARTNERS[r.paidBy]}</div></div>
+        <div style="flex:1">
+          <div class="rec-note">${r.note||r.category.replace(/^\S+\s/,"")}</div>
+          <div class="rec-meta">${r.date} · ${r.category.split(" ")[0]} · ${label(r.paidBy)}</div>
+        </div>
         <div class="rec-amt">NT$ ${r.amount.toLocaleString()}</div>
-        <button class="del-btn" data-key="${r._key}">×</button>
-      </div>`).join("")}
+        ${mine?`<button class="del-btn" data-key="${r._key}">×</button>`:`<span class="del-placeholder"></span>`}
+      </div>`;
+    }).join("")}
   </div>`;
 }
 
@@ -516,7 +599,7 @@ function renderChart(){
   const cd=catData();
   if(!cd.length) return `<div class="card"><div class="card-title">分類佔比</div><div class="empty">尚無資料</div></div>`;
   const total=cd.reduce((s,d)=>s+d.value,0);
-  let paths="",offset=0;const r=70,cx=110,cy=90,circ=2*Math.PI*r;
+  let paths="",offset=0; const r=70,cx=110,cy=90,circ=2*Math.PI*r;
   cd.forEach((d,i)=>{const pct=d.value/total,dash=pct*circ,gap=circ-dash;paths+=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${CAT_COLORS[i%CAT_COLORS.length]}" stroke-width="28" stroke-dasharray="${dash} ${gap}" stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})"/>`;offset+=dash;});
   return `<div class="card"><div class="card-title">分類佔比</div>
     <svg width="100%" viewBox="0 0 220 180" style="display:block;margin:0 auto">${paths}
@@ -535,36 +618,45 @@ function renderCal(){
   return `
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <button class="edit-btn" id="cal-prev" style="font-size:18px;border:none;background:none;cursor:pointer;color:var(--clay)">‹</button>
+      <button id="cal-prev" style="font-size:22px;border:none;background:none;cursor:pointer;color:var(--clay);padding:0 4px;line-height:1">‹</button>
       <div style="text-align:center"><div style="font-family:'Noto Serif TC',serif;font-size:16px;font-weight:700">${y}年 ${m+1}月</div><div style="font-size:11px;color:var(--sub);margin-top:2px">共 NT$ ${mt.toLocaleString()}</div></div>
-      <button class="edit-btn" id="cal-next" style="font-size:18px;border:none;background:none;cursor:pointer;color:var(--clay)">›</button>
+      <button id="cal-next" style="font-size:22px;border:none;background:none;cursor:pointer;color:var(--clay);padding:0 4px;line-height:1">›</button>
     </div>
     <div class="cal-grid">
       ${["日","一","二","三","四","五","六"].map(d=>`<div class="cal-wd">${d}</div>`).join("")}
       ${days.map(c=>c===null?`<div></div>`:`<div class="cal-cell ${c.total>0?"has-rec":""} ${calSel===c.dateStr?"selected":""}" data-date="${c.dateStr}"><span class="cal-day">${c.d}</span>${c.total>0?`<span class="cal-dot"></span>`:""}</div>`).join("")}
     </div>
   </div>
-  ${calSel&&selRecs.length?`<div class="card"><div class="card-title">${calSel}</div>${selRecs.map(r=>`<div class="rec-row"><div class="rec-dot" style="background:${CAT_COLORS[CATEGORIES.indexOf(r.category)]||"#C4A89A"}"></div><div style="flex:1"><div class="rec-note">${r.note||r.category}</div><div class="rec-meta">${PARTNERS[r.paidBy]}</div></div><div class="rec-amt">NT$ ${r.amount.toLocaleString()}</div></div>`).join("")}</div>`:""}`;
+  ${calSel&&selRecs.length?`<div class="card"><div class="card-title">${calSel}</div>${selRecs.map(r=>`<div class="rec-row"><div class="rec-dot" style="background:${CAT_COLORS[CATEGORIES.indexOf(r.category)]||"#C4A89A"}"></div><div style="flex:1"><div class="rec-note">${r.note||r.category}</div><div class="rec-meta">${label(r.paidBy)}</div></div><div class="rec-amt">NT$ ${r.amount.toLocaleString()}</div></div>`).join("")}</div>`:""}`;
 }
 
 // ── Stat ──────────────────────────────────────────────────────────────────────
 function renderStat(tbp,total){
   const pct=total>0?[(tbp[0]/total*100).toFixed(1),(tbp[1]/total*100).toFixed(1)]:[50,50];
   return `
-  <div class="card"><div class="card-title">付款比例</div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div class="card-title" style="margin-bottom:0">付款比例</div>
+      <button class="edit-btn" id="btn-names">✎ 改名</button>
+    </div>
     <div class="bar-track"><div class="bar-a" style="width:${pct[0]}%">${pct[0]}%</div><div class="bar-b" style="width:${pct[1]}%">${pct[1]}%</div></div>
-    <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--sub)"><span>${PARTNERS[0]}</span><span>${PARTNERS[1]}</span></div>
+    <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--sub)"><span>${label(0)}</span><span>${label(1)}</span></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px">
-      ${PARTNERS.map((p,i)=>`<div class="partner-card" style="border-left:3px solid ${i===0?"var(--rose)":"var(--sage)"}"><div style="font-size:12px;color:var(--sub)">${p}</div><div style="font-size:20px;font-weight:700;margin-top:4px">NT$ ${tbp[i].toLocaleString()}</div><div style="font-size:11px;color:var(--mute);margin-top:2px">佔比 ${pct[i]}%</div></div>`).join("")}
+      ${names().map((n,i)=>`<div class="partner-card" style="border-left:3px solid ${P_COLORS[i]}"><div style="font-size:12px;color:var(--sub)">${label(i)}</div><div style="font-size:20px;font-weight:700;margin-top:4px">NT$ ${tbp[i].toLocaleString()}</div><div style="font-size:11px;color:var(--mute);margin-top:2px">佔比 ${pct[i]}%</div></div>`).join("")}
     </div>
   </div>
-  ${PARTNERS.map((p,pi)=>{const recs=recList().filter(r=>r.paidBy===pi);if(!recs.length)return`<div class="card"><div class="card-title">${p}</div><div class="empty">還沒有支出</div></div>`;const map={};recs.forEach(r=>{map[r.category]=(map[r.category]||0)+r.amount;});return`<div class="card"><div class="card-title">${p} 的支出</div>${Object.entries(map).map(([cat,amt])=>`<div class="rec-row"><div class="rec-dot" style="background:${CAT_COLORS[CATEGORIES.indexOf(cat)]||"#C4A89A"}"></div><span style="flex:1;font-size:13px">${cat}</span><span class="rec-amt">NT$ ${amt.toLocaleString()}</span></div>`).join("")}</div>`;}).join("")}`;
+  ${names().map((_,pi)=>{
+    const recs=recList().filter(r=>r.paidBy===pi);
+    if(!recs.length) return `<div class="card"><div class="card-title">${label(pi)}</div><div class="empty">還沒有支出</div></div>`;
+    const map={}; recs.forEach(r=>{map[r.category]=(map[r.category]||0)+r.amount;});
+    return `<div class="card"><div class="card-title">${label(pi)} 的支出</div>${Object.entries(map).map(([cat,amt])=>`<div class="rec-row"><div class="rec-dot" style="background:${CAT_COLORS[CATEGORIES.indexOf(cat)]||"#C4A89A"}"></div><span style="flex:1;font-size:13px">${cat}</span><span class="rec-amt">NT$ ${amt.toLocaleString()}</span></div>`).join("")}</div>`;
+  }).join("")}`;
 }
 
 // ── Modals ────────────────────────────────────────────────────────────────────
 function renderAddModal(){
-  const{date,amount,category,paidBy,note,desc}=form;
-  return `<div class="overlay" id="overlay"><div class="modal-card" id="modal-inner">
+  const{date,amount,category,note,desc}=form;
+  return `<div class="overlay" id="overlay"><div class="modal-card">
     <div class="modal-handle"></div><div class="modal-title">新增支出</div>
     <div class="ai-row"><input class="ai-input" id="ai-desc" placeholder="描述這筆消費（AI 自動分類）" value="${desc}"/><button class="ai-btn" id="ai-btn">${aiLoading?"…":"✦ AI"}</button></div>
     <div class="row2">
@@ -574,16 +666,17 @@ function renderAddModal(){
     <div class="field"><label>分類</label><div class="cat-grid">
       ${CATEGORIES.map((c,i)=>`<button class="cat-chip" data-cat="${c}" style="${category===c?`background:${CAT_COLORS[i]};color:var(--surface);border-color:${CAT_COLORS[i]}`:""}">${c}</button>`).join("")}
     </div></div>
-    <div class="field"><label>誰付錢？</label><div class="paid-row">
-      ${PARTNERS.map((p,i)=>`<button class="paid-btn" data-paid="${i}" style="${paidBy===i?`background:${i===0?"var(--rose)":"var(--sage)"};color:var(--surface);border-color:transparent`:""}">${p}</button>`).join("")}
-    </div></div>
+    <div class="field">
+      <label>付款人</label>
+      <div class="paid-display">${emojis()[myIndex]} ${names()[myIndex]} <span style="font-size:11px;color:var(--mute);margin-left:4px">（你）</span></div>
+    </div>
     <div class="field"><label>備註</label><input id="f-note" placeholder="備忘…" value="${note}"/></div>
     <button class="submit-btn" id="btn-submit">記帳</button>
   </div></div>`;
 }
 
 function renderBudgetModal(){
-  return `<div class="overlay" id="overlay"><div class="modal-card" id="modal-inner" style="max-height:52vh">
+  return `<div class="overlay" id="overlay"><div class="modal-card" style="max-height:52vh">
     <div class="modal-handle"></div><div class="modal-title">設定每月預算</div>
     <div class="field"><label>預算金額（NT$）</label><input id="budget-input" type="number" value="${budgetDraft||settings.budget}" style="font-size:22px;font-weight:700;text-align:center"/></div>
     <div class="quick-btns">${[5000,10000,15000,20000,30000].map(v=>`<button class="quick-btn ${+budgetDraft===v?"active":""}" data-val="${v}">${v>=10000?v/10000+"萬":v/1000+"k"}</button>`).join("")}</div>
@@ -593,89 +686,135 @@ function renderBudgetModal(){
 
 function renderFinModal(){
   const{salary,savingsGoal,lastSaved}=settings;
-  return `<div class="overlay" id="overlay"><div class="modal-card" id="modal-inner">
+  return `<div class="overlay" id="overlay"><div class="modal-card">
     <div class="modal-handle"></div><div class="modal-title">財務設定</div>
-    <div class="field"><label>💴 當月薪水（兩人合計，NT$）</label><input id="fin-salary" type="number" placeholder="${salary}" value="${finDraft.salary??salary}"/></div>
-    <div class="field"><label>🎯 當月預計存款（NT$）</label><input id="fin-goal" type="number" placeholder="${savingsGoal}" value="${finDraft.savingsGoal??savingsGoal}"/><div class="hint">薪水扣掉支出後，希望能存多少</div></div>
-    <div class="field"><label>✅ 上月成功存入（NT$）</label><input id="fin-last" type="number" placeholder="${lastSaved}" value="${finDraft.lastSaved??lastSaved}"/><div class="hint">上個月實際存進帳戶的金額</div></div>
+    <div class="field"><label>💴 當月薪水（兩人合計，NT$）</label><input id="fin-salary" type="number" value="${salary}"/></div>
+    <div class="field"><label>🎯 當月預計存款（NT$）</label><input id="fin-goal" type="number" value="${savingsGoal}"/><div class="hint">薪水扣掉支出後，希望能存多少</div></div>
+    <div class="field"><label>✅ 上月成功存入（NT$）</label><input id="fin-last" type="number" value="${lastSaved}"/><div class="hint">上個月實際存進帳戶的金額</div></div>
     <button class="submit-btn" id="btn-fin-save">儲存</button>
   </div></div>`;
 }
 
-// ── Main Event Binding ────────────────────────────────────────────────────────
-function bindMainEvents(){
+function renderNamesModal(){
+  const n=names(),e=emojis();
+  return `<div class="overlay" id="overlay"><div class="modal-card">
+    <div class="modal-handle"></div><div class="modal-title">修改成員名稱</div>
+    <div class="field"><label>第一位</label>
+      <div style="display:flex;gap:8px">
+        <input id="nm-e0" value="${e[0]}" style="width:56px;text-align:center;font-size:20px;border:1.5px solid var(--border);border-radius:9px;padding:9px 4px;background:var(--surface2);outline:none;color:var(--text)"/>
+        <input id="nm-n0" value="${n[0]}" style="flex:1;border:1.5px solid var(--border);border-radius:9px;padding:9px 12px;font-size:14px;background:var(--surface2);outline:none;color:var(--text)"/>
+      </div>
+    </div>
+    <div class="field"><label>第二位</label>
+      <div style="display:flex;gap:8px">
+        <input id="nm-e1" value="${e[1]}" style="width:56px;text-align:center;font-size:20px;border:1.5px solid var(--border);border-radius:9px;padding:9px 4px;background:var(--surface2);outline:none;color:var(--text)"/>
+        <input id="nm-n1" value="${n[1]}" style="flex:1;border:1.5px solid var(--border);border-radius:9px;padding:9px 12px;font-size:14px;background:var(--surface2);outline:none;color:var(--text)"/>
+      </div>
+    </div>
+    <button class="submit-btn" id="btn-names-save">儲存</button>
+  </div></div>`;
+}
+
+function renderTitleModal(){
+  return `<div class="overlay" id="overlay"><div class="modal-card" style="max-height:44vh">
+    <div class="modal-handle"></div><div class="modal-title">修改帳本名稱</div>
+    <div class="field"><label>帳本名稱</label><input id="title-input" value="${settings.bookTitle||"我們的帳本"}" style="font-size:16px"/></div>
+    <button class="submit-btn" id="btn-title-save">儲存</button>
+  </div></div>`;
+}
+
+// ── App Events ────────────────────────────────────────────────────────────────
+function bindAppEvents(){
   document.querySelectorAll(".nav-btn").forEach(b=>{ b.onclick=()=>{tab=b.dataset.tab;render();}; });
-  const addBtn=document.getElementById("btn-add");
-  if(addBtn) addBtn.onclick=()=>{modal="add";form=freshForm();render();};
-  const leaveBtn=document.getElementById("btn-leave");
-  if(leaveBtn) leaveBtn.onclick=leaveRoom;
-  const finBtn=document.getElementById("btn-fin");
-  if(finBtn) finBtn.onclick=()=>{finDraft={salary:settings.salary,savingsGoal:settings.savingsGoal,lastSaved:settings.lastSaved};modal="finance";render();};
-  const budgetBtn=document.getElementById("btn-budget");
-  if(budgetBtn) budgetBtn.onclick=()=>{budgetDraft=String(settings.budget);modal="budget";render();};
-  document.querySelectorAll(".del-btn").forEach(b=>{ b.onclick=()=>{if(confirm("確定刪除？"))fbDel(b.dataset.key);}; });
-  const cp=document.getElementById("cal-prev");const cn=document.getElementById("cal-next");
+  document.getElementById("btn-add").onclick=()=>{modal="add";form=freshForm();render();};
+  document.getElementById("btn-leave").onclick=leaveRoom;
+  document.getElementById("btn-edit-title")?.onclick=()=>{modal="title";render();};
+  document.getElementById("btn-fin")?.onclick=()=>{modal="finance";render();};
+  document.getElementById("btn-budget")?.onclick=()=>{budgetDraft=String(settings.budget);modal="budget";render();};
+  document.getElementById("btn-names")?.onclick=()=>{modal="names";render();};
+
+  document.querySelectorAll(".del-btn").forEach(b=>{
+    b.onclick=()=>{ if(confirm("確定刪除這筆支出？")) fbDel(b.dataset.key); };
+  });
+
+  const cp=document.getElementById("cal-prev"),cn=document.getElementById("cal-next");
   if(cp) cp.onclick=()=>{let{y,m}=calMonth;m--;if(m<0){m=11;y--;}calMonth={y,m};render();};
   if(cn) cn.onclick=()=>{let{y,m}=calMonth;m++;if(m>11){m=0;y++;}calMonth={y,m};render();};
   document.querySelectorAll(".cal-cell").forEach(c=>{ c.onclick=()=>{calSel=calSel===c.dataset.date?null:c.dataset.date;render();}; });
-  const overlay=document.getElementById("overlay");
-  if(overlay) overlay.onclick=e=>{if(e.target===overlay){modal=null;render();}};
+
+  const ov=document.getElementById("overlay");
+  if(ov) ov.onclick=e=>{ if(e.target===ov){modal=null;render();} };
 
   if(modal==="add"){
-    const aiDesc=document.getElementById("ai-desc");
-    aiDesc.oninput=()=>{form.desc=aiDesc.value;};
+    const ad=document.getElementById("ai-desc");
+    ad.oninput=()=>{form.desc=ad.value;};
     document.getElementById("f-date").onchange=e=>{form.date=e.target.value;};
     document.getElementById("f-amount").oninput=e=>{form.amount=e.target.value;};
     document.getElementById("f-note").oninput=e=>{form.note=e.target.value;};
     document.querySelectorAll(".cat-chip").forEach(b=>{b.onclick=()=>{form.category=b.dataset.cat;render();};});
-    document.querySelectorAll(".paid-btn").forEach(b=>{b.onclick=()=>{form.paidBy=+b.dataset.paid;render();};});
     document.getElementById("ai-btn").onclick=async()=>{
       if(!form.desc.trim()) return showToast("請先輸入描述");
-      aiLoading=true;render();
+      aiLoading=true; render();
       const[cat,note]=await Promise.all([aiClassify(form.desc),aiNote(form.desc)]);
-      form.category=cat;form.note=note;aiLoading=false;render();showToast("✦ AI 已自動填入");
+      form.category=cat; form.note=note; aiLoading=false; render(); showToast("✦ AI 已自動填入");
     };
     document.getElementById("btn-submit").onclick=async()=>{
       if(!form.amount||isNaN(+form.amount)) return showToast("請輸入正確金額");
-      await fbAdd({date:form.date,amount:+form.amount,category:form.category,paidBy:form.paidBy,note:form.note});
-      modal=null;form=freshForm();showToast("✦ 記帳成功");
+      const btn=document.getElementById("btn-submit");
+      btn.disabled=true; btn.textContent="記帳中…";
+      await fbAdd({date:form.date,amount:+form.amount,category:form.category,paidBy:myIndex,note:form.note});
+      modal=null; form=freshForm(); showToast("✦ 記帳成功");
     };
   }
   if(modal==="budget"){
     document.getElementById("budget-input").oninput=e=>{budgetDraft=e.target.value;};
     document.querySelectorAll(".quick-btn").forEach(b=>{b.onclick=()=>{budgetDraft=b.dataset.val;render();};});
     document.getElementById("btn-budget-save").onclick=async()=>{
-      const v=+budgetDraft;if(!v||isNaN(v)||v<=0) return showToast("請輸入有效預算");
-      await fbSetSettings({budget:v});settings.budget=v;modal=null;showToast("✦ 預算已更新");
+      const v=+budgetDraft; if(!v||isNaN(v)||v<=0) return showToast("請輸入有效預算");
+      await fbSave({budget:v}); modal=null; showToast("✦ 預算已更新");
     };
   }
   if(modal==="finance"){
-    document.getElementById("fin-salary").oninput=e=>{finDraft.salary=e.target.value;};
-    document.getElementById("fin-goal").oninput=e=>{finDraft.savingsGoal=e.target.value;};
-    document.getElementById("fin-last").oninput=e=>{finDraft.lastSaved=e.target.value;};
+    const s=document.getElementById("fin-salary"),g=document.getElementById("fin-goal"),l=document.getElementById("fin-last");
     document.getElementById("btn-fin-save").onclick=async()=>{
       const p={};
-      if(+finDraft.salary>0) p.salary=+finDraft.salary;
-      if(+finDraft.savingsGoal>0) p.savingsGoal=+finDraft.savingsGoal;
-      if(finDraft.lastSaved!==undefined&&+finDraft.lastSaved>=0) p.lastSaved=+finDraft.lastSaved;
-      if(Object.keys(p).length){await fbSetSettings(p);settings={...settings,...p};}
-      modal=null;showToast("✦ 財務資訊已更新");
+      if(+s.value>0) p.salary=+s.value;
+      if(+g.value>0) p.savingsGoal=+g.value;
+      if(l.value!==""&&+l.value>=0) p.lastSaved=+l.value;
+      if(Object.keys(p).length) await fbSave(p);
+      modal=null; showToast("✦ 財務資訊已更新");
     };
+  }
+  if(modal==="names"){
+    document.getElementById("btn-names-save").onclick=async()=>{
+      const e0=document.getElementById("nm-e0").value||emojis()[0];
+      const n0=document.getElementById("nm-n0").value||names()[0];
+      const e1=document.getElementById("nm-e1").value||emojis()[1];
+      const n1=document.getElementById("nm-n1").value||names()[1];
+      await fbSave({names:[n0,n1],nameEmojis:[e0,e1]});
+      modal=null; showToast("✦ 名稱已更新");
+    };
+  }
+  if(modal==="title"){
+    const ti=document.getElementById("title-input");
+    document.getElementById("btn-title-save").onclick=async()=>{
+      const v=ti.value.trim()||"我們的帳本";
+      await fbSave({bookTitle:v}); modal=null; showToast("✦ 帳本名稱已更新");
+    };
+    ti.onkeydown=e=>{ if(e.key==="Enter") document.getElementById("btn-title-save").click(); };
   }
 }
 
-// ── Boot: Anonymous Auth ──────────────────────────────────────────────────────
-// Kick off anonymous sign-in immediately on page load (warms up Firebase connection)
-// so it's ready before the user even touches the form.
+// ── Boot ──────────────────────────────────────────────────────────────────────
 signInAnonymously(auth).catch(()=>{});
 
 onAuthStateChanged(auth, user=>{
   if(user){
     authUser=user;
+    screen="login";
     render();
   } else {
-    // Fallback retry if first attempt failed
-    signInAnonymously(auth).catch(e=>{ console.error(e); authError="認證失敗，請重新整理"; render(); });
+    signInAnonymously(auth).catch(()=>{ screen="login"; render(); });
   }
 });
 </script>
