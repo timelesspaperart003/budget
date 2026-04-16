@@ -4,6 +4,14 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
 <title>我們的帳本</title>
+<meta name="description" content="情侶共用記帳 App"/>
+<meta name="theme-color" content="#F2EFEA"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+<meta name="apple-mobile-web-app-title" content="我們的帳本"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<link rel="manifest" href="/manifest.json"/>
+<link rel="apple-touch-icon" href="/icon-192.png"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -523,7 +531,7 @@ function renderHome(tbp,total,spent,budget,budgetPct,budgetLeft,budgetOver,budge
   const savColorByP=projByP.map(p=>p>=savingsGoal/2?"var(--green)":p>=0?"var(--warn)":"var(--danger)");
 
   const finCardCombined=`
-    <div class="fin-row"><span class="fin-label">💴 合計薪水</span><span class="fin-val">NT$ ${totalSalary.toLocaleString()}</span></div>
+    <div class="fin-row"><span class="fin-label">💴 合計收入</span><span class="fin-val">NT$ ${totalSalary.toLocaleString()}</span></div>
     <div class="fin-divider"></div>
     <div class="fin-row"><span class="fin-label">💸 本月支出</span><span class="fin-val" style="color:var(--clay)">－ NT$ ${spent.toLocaleString()}</span></div>
     <div class="fin-divider"></div>
@@ -552,7 +560,7 @@ function renderHome(tbp,total,spent,budget,budgetPct,budgetLeft,budgetOver,budge
         const sc=savColorByP[i];
         return `<div style="background:var(--surface2);border-radius:12px;padding:12px;border-left:3px solid ${i===0?"var(--rose)":"var(--sage)"}">
           <div style="font-size:11px;color:var(--sub);margin-bottom:6px">${emojis()[i]} ${n}</div>
-          <div style="font-size:10px;color:var(--mute)">薪水</div>
+          <div style="font-size:10px;color:var(--mute)">收入</div>
           <div style="font-size:14px;font-weight:700;margin-bottom:4px">NT$ ${salaries[i].toLocaleString()}</div>
           <div style="font-size:10px;color:var(--mute)">支出</div>
           <div style="font-size:13px;font-weight:600;color:var(--clay);margin-bottom:4px">－ NT$ ${spentByP[i].toLocaleString()}</div>
@@ -730,9 +738,9 @@ function renderFinModal(){
   const n=names(),e=emojis();
   return `<div class="overlay" id="overlay"><div class="modal-card">
     <div class="modal-handle"></div><div class="modal-title">財務設定</div>
-    <div class="field"><label>💴 ${e[0]} ${n[0]} 的薪水（NT$）</label><input id="fin-s0" type="number" value="${salary0||0}"/></div>
-    <div class="field"><label>💴 ${e[1]} ${n[1]} 的薪水（NT$）</label><input id="fin-s1" type="number" value="${salary1||0}"/></div>
-    <div class="field"><label>🎯 當月預計存款（NT$）</label><input id="fin-goal" type="number" value="${savingsGoal}"/><div class="hint">兩人薪水扣掉支出後，希望能存多少</div></div>
+    <div class="field"><label>💴 ${e[0]} ${n[0]} 的收入（NT$）</label><input id="fin-s0" type="number" value="${salary0||0}"/></div>
+    <div class="field"><label>💴 ${e[1]} ${n[1]} 的收入（NT$）</label><input id="fin-s1" type="number" value="${salary1||0}"/></div>
+    <div class="field"><label>🎯 當月預計存款（NT$）</label><input id="fin-goal" type="number" value="${savingsGoal}"/><div class="hint">兩人收入扣掉支出後，希望能存多少</div></div>
     <div class="field"><label>✅ 上月成功存入（NT$）</label><input id="fin-last" type="number" value="${lastSaved}"/><div class="hint">上個月實際存進帳戶的金額</div></div>
     <button class="submit-btn" id="btn-fin-save">儲存</button>
   </div></div>`;
@@ -866,6 +874,13 @@ onAuthStateChanged(auth, user=>{
     signInAnonymously(auth).catch(()=>{ screen="login"; render(); });
   }
 });
+</script>
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('/sw.js').catch(()=>{});
+  });
+}
 </script>
 </body>
 </html>
