@@ -211,7 +211,7 @@ let authError="";
 let setupDraft={bookTitle:"我們的帳本",name0:"小美",emoji0:"🌸",name1:"小丑",emoji1:"🤡"};
 let unsubRec, unsubSet;
 
-function freshForm(){ return {date:today(),amount:"",category:CATEGORIES[0],note:"",desc:""}; }
+function freshForm(){ return {date:today(),amount:"",category:CATEGORIES[0],paidBy:myIndex??0,note:"",desc:""}; }
 function today(){ return new Date().toISOString().slice(0,10); }
 function thisMonthKey(){ const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`; }
 function genCode(){ return Math.random().toString(36).slice(2,8).toUpperCase(); }
@@ -705,6 +705,7 @@ function renderStat(tbp,total){
 // ── Modals ────────────────────────────────────────────────────────────────────
 function renderAddModal(){
   const{date,amount,category,note,desc}=form;
+  const paidBy=form.paidBy??myIndex;
   return `<div class="overlay" id="overlay"><div class="modal-card">
     <div class="modal-handle"></div><div class="modal-title">新增支出</div>
     <div class="ai-row"><input class="ai-input" id="ai-desc" placeholder="描述這筆消費（AI 自動分類）" value="${desc}"/><button class="ai-btn" id="ai-btn">${aiLoading?"…":"✦ AI"}</button></div>
@@ -715,9 +716,10 @@ function renderAddModal(){
     <div class="field"><label>分類</label><div class="cat-grid">
       ${CATEGORIES.map((c,i)=>`<button class="cat-chip" data-cat="${c}" style="${category===c?`background:${CAT_COLORS[i]};color:var(--surface);border-color:${CAT_COLORS[i]}`:""}">${c}</button>`).join("")}
     </div></div>
-    <div class="field">
-      <label>付款人</label>
-      <div class="paid-display">${emojis()[myIndex]} ${names()[myIndex]} <span style="font-size:11px;color:var(--mute);margin-left:4px">（你）</span></div>
+    <div class="field"><label>誰付錢？</label>
+      <div style="display:flex;gap:10px">
+        ${names().map((n,i)=>`<button class="paid-btn" data-paid="${i}" style="flex:1;border:1.5px solid ${paidBy===i?(i===0?"var(--rose)":"var(--sage)"):"var(--border)"};border-radius:10px;padding:10px;background:${paidBy===i?(i===0?"var(--rose)":"var(--sage)"):"var(--surface2)"};cursor:pointer;font-size:13px;color:${paidBy===i?"var(--surface)":"var(--sub)"};">${emojis()[i]} ${n}</button>`).join("")}
+      </div>
     </div>
     <div class="field"><label>備註</label><input id="f-note" placeholder="備忘…" value="${note}"/></div>
     <button class="submit-btn" id="btn-submit">記帳</button>
@@ -807,6 +809,7 @@ function bindAppEvents(){
     document.getElementById("f-amount").oninput=e=>{form.amount=e.target.value;};
     document.getElementById("f-note").oninput=e=>{form.note=e.target.value;};
     document.querySelectorAll(".cat-chip").forEach(b=>{b.onclick=()=>{form.category=b.dataset.cat;render();};});
+    document.querySelectorAll(".paid-btn").forEach(b=>{b.onclick=()=>{form.paidBy=+b.dataset.paid;render();};});
     document.getElementById("ai-btn").onclick=async()=>{
       if(!form.desc.trim()) return showToast("請先輸入描述");
       aiLoading=true; render();
@@ -817,8 +820,8 @@ function bindAppEvents(){
       if(!form.amount||isNaN(+form.amount)) return showToast("請輸入正確金額");
       const btn=document.getElementById("btn-submit");
       btn.disabled=true; btn.textContent="記帳中…";
-      await fbAdd({date:form.date,amount:+form.amount,category:form.category,paidBy:myIndex,note:form.note});
-      modal=null; form=freshForm(); showToast("✦ 記帳成功");
+      await fbAdd({date:form.date,amount:+form.amount,category:form.category,paidBy:form.paidBy??myIndex,note:form.note});
+      modal=null; form=freshForm(); render(); showToast("✦ 記帳成功");
     };
   }
   if(modal==="budget"){
@@ -826,7 +829,7 @@ function bindAppEvents(){
     document.querySelectorAll(".quick-btn").forEach(b=>{b.onclick=()=>{budgetDraft=b.dataset.val;render();};});
     document.getElementById("btn-budget-save").onclick=async()=>{
       const v=+budgetDraft; if(!v||isNaN(v)||v<=0) return showToast("請輸入有效預算");
-      await fbSave({budget:v}); modal=null; showToast("✦ 預算已更新");
+      await fbSave({budget:v}); modal=null; render(); showToast("✦ 預算已更新");
     };
   }
   if(modal==="finance"){
@@ -839,7 +842,7 @@ function bindAppEvents(){
       if(+g.value>0) p.savingsGoal=+g.value;
       if(l.value!==""&&+l.value>=0) p.lastSaved=+l.value;
       if(Object.keys(p).length) await fbSave(p);
-      modal=null; showToast("✦ 財務資訊已更新");
+      modal=null; render(); showToast("✦ 財務資訊已更新");
     };
   }
   if(modal==="names"){
@@ -849,14 +852,14 @@ function bindAppEvents(){
       const e1=document.getElementById("nm-e1").value||emojis()[1];
       const n1=document.getElementById("nm-n1").value||names()[1];
       await fbSave({names:[n0,n1],nameEmojis:[e0,e1]});
-      modal=null; showToast("✦ 名稱已更新");
+      modal=null; render(); showToast("✦ 名稱已更新");
     };
   }
   if(modal==="title"){
     const ti=document.getElementById("title-input");
     document.getElementById("btn-title-save").onclick=async()=>{
       const v=ti.value.trim()||"我們的帳本";
-      await fbSave({bookTitle:v}); modal=null; showToast("✦ 帳本名稱已更新");
+      await fbSave({bookTitle:v}); modal=null; render(); showToast("✦ 帳本名稱已更新");
     };
     ti.onkeydown=e=>{ if(e.key==="Enter") document.getElementById("btn-title-save").click(); };
   }
