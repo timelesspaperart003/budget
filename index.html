@@ -202,12 +202,14 @@ let myIndex=null;          // 0 or 1 — picked each session
 let screen="loading";
 let tab="home", records={}, syncing=false, modal=null;
 let settings={
-  budget:10000,salary0:30000,salary1:30000,
+  budget:10000,budget0:5000,budget1:5000,
+  salary0:30000,salary1:30000,
   savingsGoal0:8000,savingsGoal1:7000,
   lastSaved0:0,lastSaved1:0,
   bookTitle:"我們的帳本",names:["小美","小丑"],nameEmojis:["🌸","🤡"]
 };
-let finView="combined"; // "combined" | "individual" — toggled by user
+let finView="combined"; // "combined" | "individual"
+let calView="combined"; // "combined" | "individual"
 let calMonth={y:new Date().getFullYear(),m:new Date().getMonth()}, calSel=null;
 let aiLoading=false;
 let form=freshForm(), budgetDraft="", editKey=null; // editKey: key of record being edited
@@ -305,7 +307,8 @@ function leaveRoom(){
   if(unsubRec) unsubRec();
   if(unsubSet) unsubSet();
   roomId=null; myIndex=null; screen="login"; authError="";
-  records={}; settings={budget:10000,salary0:30000,salary1:30000,
+  records={}; settings={budget:10000,budget0:5000,budget1:5000,
+    salary0:30000,salary1:30000,
     savingsGoal0:8000,savingsGoal1:7000,lastSaved0:0,lastSaved1:0,
     bookTitle:"我們的帳本",names:["小美","小丑"],nameEmojis:["🌸","🤡"]};
   render();
@@ -479,7 +482,7 @@ function bindIdentityEvents(){
 // ── Main App ──────────────────────────────────────────────────────────────────
 function renderApp(){
   const tbp=totalByPartner(),total=tbp[0]+tbp[1],spent=thisMonthSpent();
-  const{budget,salary0,salary1,savingsGoal0,savingsGoal1,lastSaved0,lastSaved1,bookTitle}=settings;
+  const{budget,budget0,budget1,salary0,salary1,savingsGoal0,savingsGoal1,lastSaved0,lastSaved1,bookTitle}=settings;
   const totalSalary=(salary0||0)+(salary1||0);
   const totalSavingsGoal=(savingsGoal0||0)+(savingsGoal1||0);
   const totalLastSaved=(lastSaved0||0)+(lastSaved1||0);
@@ -504,13 +507,14 @@ function renderApp(){
       </div>
     </div>
     <div style="display:flex;gap:8px;align-items:center;flex-shrink:0">
+      <button class="edit-btn" id="btn-settings">⚙</button>
       <button class="edit-btn" id="btn-leave">離開</button>
       <button class="add-btn" id="btn-add">＋</button>
     </div>
   </header>
 
   <main class="main">
-    ${tab==="home"  ? renderHome(tbp,total,spent,budget,budgetPct,budgetLeft,budgetOver,budgetBarColor,salary0,salary1,totalSalary,savingsGoal0,savingsGoal1,totalSavingsGoal,lastSaved0,lastSaved1,totalLastSaved,proj,savRate,lastRate,savColor) : ""}
+    ${tab==="home"  ? renderHome(tbp,total,spent,budget,budget0,budget1,budgetPct,budgetLeft,budgetOver,budgetBarColor,salary0,salary1,totalSalary,savingsGoal0,savingsGoal1,totalSavingsGoal,lastSaved0,lastSaved1,totalLastSaved,proj,savRate,lastRate,savColor) : ""}
     ${tab==="chart" ? renderChart() : ""}
     ${tab==="cal"   ? renderCal()   : ""}
     ${tab==="stat"  ? renderStat(tbp,total) : ""}
@@ -521,17 +525,19 @@ function renderApp(){
       <button class="nav-btn ${tab===k?"active":""}" data-tab="${k}"><span class="nav-icon">${ic}</span>${lb}</button>`).join("")}
   </nav>
 
-  ${modal==="add"     ? renderAddModal()    : ""}
-  ${modal==="edit"    ? renderEditModal()   : ""}
-  ${modal==="budget"  ? renderBudgetModal() : ""}
-  ${modal==="finance" ? renderFinModal()    : ""}
-  ${modal==="names"   ? renderNamesModal()  : ""}
-  ${modal==="title"   ? renderTitleModal()  : ""}
+  ${modal==="add"      ? renderAddModal()      : ""}
+  ${modal==="edit"     ? renderEditModal()     : ""}
+  ${modal==="budget"   ? renderBudgetModal()   : ""}
+  ${modal==="finance"  ? renderFinModal()      : ""}
+  ${modal==="names"    ? renderNamesModal()    : ""}
+  ${modal==="title"    ? renderTitleModal()    : ""}
+  ${modal==="settings" ? renderSettingsModal() : ""}
   `;
 }
 
 // ── Home ──────────────────────────────────────────────────────────────────────
-function renderHome(tbp,total,spent,budget,budgetPct,budgetLeft,budgetOver,budgetBarColor,salary0,salary1,totalSalary,savingsGoal0,savingsGoal1,totalSavingsGoal,lastSaved0,lastSaved1,totalLastSaved,proj,savRate,lastRate,savColor){
+function renderHome(tbp,total,spent,budget,budget0,budget1,budgetPct,budgetLeft,budgetOver,budgetBarColor,salary0,salary1,totalSalary,savingsGoal0,savingsGoal1,totalSavingsGoal,lastSaved0,lastSaved1,totalLastSaved,proj,savRate,lastRate,savColor){
+  const budgets=[budget0||0,budget1||0];
   const recs=recList(),bd=barData(),bdMax=bd.length?Math.max(...bd.map(d=>d.value)):1;
   const spentByP=tbp;
   const salaries=[salary0||0,salary1||0];
@@ -604,25 +610,47 @@ function renderHome(tbp,total,spent,budget,budgetPct,budgetLeft,budgetOver,budge
   </div>
 
   <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
-      <div>
-        <div class="hero-label">本月預算</div>
-        <div style="display:flex;align-items:baseline;gap:6px;margin-top:3px">
-          <span style="font-family:'Noto Serif TC',serif;font-size:24px;font-weight:700;letter-spacing:-1px;color:${budgetOver?"var(--danger)":"var(--text)"}">NT$ ${spent.toLocaleString()}</span>
-          <span style="font-size:12px;color:var(--mute)">/ ${budget.toLocaleString()}</span>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div class="card-title" style="margin-bottom:0">本月預算</div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <div style="display:flex;background:var(--surface2);border-radius:8px;padding:2px;gap:2px">
+          <button id="bud-view-combined" style="border:none;cursor:pointer;border-radius:6px;padding:4px 8px;font-size:10px;font-weight:600;letter-spacing:.5px;transition:all .15s;${finView==="combined"?"background:var(--clay);color:var(--surface)":"background:transparent;color:var(--mute)"}">合計</button>
+          <button id="bud-view-individual" style="border:none;cursor:pointer;border-radius:6px;padding:4px 8px;font-size:10px;font-weight:600;letter-spacing:.5px;transition:all .15s;${finView==="individual"?"background:var(--clay);color:var(--surface)":"background:transparent;color:var(--mute)"}">各自</button>
         </div>
+        <button class="edit-btn" id="btn-budget">✎</button>
       </div>
-      <button class="edit-btn" id="btn-budget">✎ 調整</button>
     </div>
-    <div class="progress-track"><div class="progress-fill" style="width:${budgetPct}%;background:${budgetBarColor};min-width:${spent>0?"6px":"0"}"></div></div>
-    <div style="display:flex;justify-content:space-between;margin-top:7px;font-size:11px">
-      <span style="color:var(--mute)">${budgetPct.toFixed(0)}% 已使用</span>
-      <span style="font-weight:600;color:${budgetOver?"var(--danger)":budgetPct>=80?"var(--warn)":"var(--sub)"}">
-        ${budgetOver?`🚨 超支 NT$ ${Math.abs(budgetLeft).toLocaleString()}`:`剩餘 NT$ ${budgetLeft.toLocaleString()}`}
-      </span>
-    </div>
-    ${budgetPct>=80&&!budgetOver?`<div class="warn-banner">⚠ 已使用 ${budgetPct.toFixed(0)}%，快到預算上限了！</div>`:""}
-    ${budgetOver?`<div class="warn-banner" style="background:rgba(184,112,112,.1);color:var(--danger);border-color:rgba(184,112,112,.3)">已超出預算 NT$ ${Math.abs(budgetLeft).toLocaleString()}，要節制一下囉！</div>`:""}
+    ${finView==="combined"?`
+      <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:10px">
+        <span style="font-family:'Noto Serif TC',serif;font-size:24px;font-weight:700;letter-spacing:-1px;color:${budgetOver?"var(--danger)":"var(--text)"}">NT$ ${spent.toLocaleString()}</span>
+        <span style="font-size:12px;color:var(--mute)">/ ${budget.toLocaleString()}</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" style="width:${budgetPct}%;background:${budgetBarColor};min-width:${spent>0?"6px":"0"}"></div></div>
+      <div style="display:flex;justify-content:space-between;margin-top:7px;font-size:11px">
+        <span style="color:var(--mute)">${budgetPct.toFixed(0)}% 已使用</span>
+        <span style="font-weight:600;color:${budgetOver?"var(--danger)":budgetPct>=80?"var(--warn)":"var(--sub)"}">
+          ${budgetOver?`🚨 超支 NT$ ${Math.abs(budgetLeft).toLocaleString()}`:`剩餘 NT$ ${budgetLeft.toLocaleString()}`}
+        </span>
+      </div>
+      ${budgetPct>=80&&!budgetOver?`<div class="warn-banner">⚠ 已使用 ${budgetPct.toFixed(0)}%，快到上限了！</div>`:""}
+      ${budgetOver?`<div class="warn-banner" style="background:rgba(184,112,112,.1);color:var(--danger);border-color:rgba(184,112,112,.3)">已超出預算 NT$ ${Math.abs(budgetLeft).toLocaleString()}！</div>`:""}
+    `:`
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        ${names().map((n,i)=>{
+          const s=tbp[i], b=budgets[i], over=s>b, pct=b>0?Math.min(s/b*100,100):0, left=b-s;
+          const bc=over?"var(--danger)":pct>=80?"var(--warn)":"var(--sage)";
+          return `<div style="background:var(--surface2);border-radius:12px;padding:12px;border-left:3px solid ${i===0?"var(--rose)":"var(--sage)"}">
+            <div style="font-size:11px;color:var(--sub);margin-bottom:6px">${emojis()[i]} ${n}</div>
+            <div style="font-size:18px;font-weight:800;color:${over?"var(--danger)":"var(--text)"};letter-spacing:-0.5px">NT$ ${s.toLocaleString()}</div>
+            <div style="font-size:10px;color:var(--mute);margin-bottom:6px">/ ${b.toLocaleString()}</div>
+            <div class="progress-track" style="margin:4px 0"><div class="progress-fill" style="width:${pct}%;background:${bc};min-width:${s>0?"4px":"0"}"></div></div>
+            <div style="font-size:10px;font-weight:600;color:${over?"var(--danger)":pct>=80?"var(--warn)":"var(--sub)"}">
+              ${over?`超支 NT$ ${Math.abs(left).toLocaleString()}`:`剩 NT$ ${left.toLocaleString()}`}
+            </div>
+          </div>`;
+        }).join("")}
+      </div>
+    `}
   </div>
 
   <div class="hero-card">
@@ -674,32 +702,59 @@ function renderChart(){
 // ── Calendar ──────────────────────────────────────────────────────────────────
 function renderCal(){
   const{y,m}=calMonth,days=calDays(),mt=monthTotal();
+  const mtByP=[0,1].map(i=>recList().filter(r=>{const d=new Date(r.date);return d.getFullYear()===y&&d.getMonth()===m&&r.paidBy===i;}).reduce((s,r)=>s+r.amount,0));
   const selRecs=calSel?(days.find(d=>d?.dateStr===calSel)?.recs||[]):[];
   return `
   <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
       <button id="cal-prev" style="font-size:22px;border:none;background:none;cursor:pointer;color:var(--clay);padding:0 4px;line-height:1">‹</button>
-      <div style="text-align:center"><div style="font-family:'Noto Serif TC',serif;font-size:16px;font-weight:700">${y}年 ${m+1}月</div><div style="font-size:11px;color:var(--sub);margin-top:2px">共 NT$ ${mt.toLocaleString()}</div></div>
+      <div style="text-align:center">
+        <div style="font-family:'Noto Serif TC',serif;font-size:16px;font-weight:700">${y}年 ${m+1}月</div>
+        ${calView==="combined"
+          ? `<div style="font-size:11px;color:var(--sub);margin-top:2px">合計 NT$ ${mt.toLocaleString()}</div>`
+          : `<div style="font-size:11px;margin-top:2px;display:flex;gap:8px;justify-content:center">
+               <span style="color:var(--rose)">${emojis()[0]} NT$ ${mtByP[0].toLocaleString()}</span>
+               <span style="color:var(--sage)">${emojis()[1]} NT$ ${mtByP[1].toLocaleString()}</span>
+             </div>`
+        }
+      </div>
       <button id="cal-next" style="font-size:22px;border:none;background:none;cursor:pointer;color:var(--clay);padding:0 4px;line-height:1">›</button>
+    </div>
+    <div style="display:flex;background:var(--surface2);border-radius:8px;padding:2px;gap:2px;margin-bottom:10px">
+      <button id="cal-view-combined" style="flex:1;border:none;cursor:pointer;border-radius:6px;padding:5px 4px;font-size:10px;font-weight:600;transition:all .15s;${calView==="combined"?"background:var(--clay);color:var(--surface)":"background:transparent;color:var(--mute)"}">合計</button>
+      <button id="cal-view-p0" style="flex:1;border:none;cursor:pointer;border-radius:6px;padding:5px 4px;font-size:10px;font-weight:600;transition:all .15s;${calView==="p0"?"background:var(--rose);color:var(--surface)":"background:transparent;color:var(--mute)"}">${emojis()[0]} ${names()[0]}</button>
+      <button id="cal-view-p1" style="flex:1;border:none;cursor:pointer;border-radius:6px;padding:5px 4px;font-size:10px;font-weight:600;transition:all .15s;${calView==="p1"?"background:var(--sage);color:var(--surface)":"background:transparent;color:var(--mute)"}">${emojis()[1]} ${names()[1]}</button>
     </div>
     <div class="cal-grid">
       ${["日","一","二","三","四","五","六"].map(d=>`<div class="cal-wd">${d}</div>`).join("")}
       ${days.map(c=>{
         if(c===null) return `<div></div>`;
         const byP=[0,1].map(i=>c.recs.filter(r=>r.paidBy===i).reduce((s,r)=>s+r.amount,0));
-        const hasDots=byP[0]>0||byP[1]>0;
-        return `<div class="cal-cell ${c.total>0?"has-rec":""} ${calSel===c.dateStr?"selected":""}" data-date="${c.dateStr}" style="padding:2px 1px;">
-          <span class="cal-day">${c.d}</span>
-          ${hasDots?`<div style="display:flex;gap:2px;justify-content:center;flex-wrap:wrap;margin-top:1px">
-            ${byP[0]>0?`<span style="font-size:7px;color:var(--rose);font-weight:700;line-height:1">${byP[0]>=1000?Math.round(byP[0]/100)/10+"k":byP[0]}</span>`:""}
+        const fmt=v=>v>=1000?Math.round(v/100)/10+"k":v;
+        let dot="", hasAmt=false;
+        if(calView==="combined"&&c.total>0){
+          dot=`<div style="display:flex;gap:2px;justify-content:center;margin-top:1px">
+            ${byP[0]>0?`<span style="font-size:7px;color:var(--rose);font-weight:700;line-height:1">${fmt(byP[0])}</span>`:""}
             ${byP[0]>0&&byP[1]>0?`<span style="font-size:7px;color:var(--mute)">·</span>`:""}
-            ${byP[1]>0?`<span style="font-size:7px;color:var(--sage);font-weight:700;line-height:1">${byP[1]>=1000?Math.round(byP[1]/100)/10+"k":byP[1]}</span>`:""}
-          </div>`:""}
+            ${byP[1]>0?`<span style="font-size:7px;color:var(--sage);font-weight:700;line-height:1">${fmt(byP[1])}</span>`:""}
+          </div>`; hasAmt=true;
+        } else if(calView==="p0"&&byP[0]>0){
+          dot=`<span style="font-size:7px;color:var(--rose);font-weight:700;line-height:1;display:block;text-align:center;margin-top:1px">${fmt(byP[0])}</span>`; hasAmt=true;
+        } else if(calView==="p1"&&byP[1]>0){
+          dot=`<span style="font-size:7px;color:var(--sage);font-weight:700;line-height:1;display:block;text-align:center;margin-top:1px">${fmt(byP[1])}</span>`; hasAmt=true;
+        }
+        const showCell=calView==="combined"?c.total>0:calView==="p0"?byP[0]>0:byP[1]>0;
+        return `<div class="cal-cell ${showCell?"has-rec":""} ${calSel===c.dateStr?"selected":""}" data-date="${c.dateStr}" style="padding:2px 1px;">
+          <span class="cal-day">${c.d}</span>
+          ${dot}
         </div>`;
       }).join("")}
     </div>
   </div>
-  ${calSel&&selRecs.length?`<div class="card"><div class="card-title">${calSel}</div>${selRecs.map(r=>`<div class="rec-row"><div class="rec-dot" style="background:${CAT_COLORS[CATEGORIES.indexOf(r.category)]||"#C4A89A"}"></div><div style="flex:1"><div class="rec-note">${r.note||r.category}</div><div class="rec-meta">${label(r.paidBy)}</div></div><div class="rec-amt">NT$ ${r.amount.toLocaleString()}</div></div>`).join("")}</div>`:""}`;
+  ${(()=>{
+    const filtRecs=calView==="p0"?selRecs.filter(r=>r.paidBy===0):calView==="p1"?selRecs.filter(r=>r.paidBy===1):selRecs;
+    return filtRecs.length?`<div class="card"><div class="card-title">${calSel}</div>${filtRecs.map(r=>`<div class="rec-row"><div class="rec-dot" style="background:${CAT_COLORS[CATEGORIES.indexOf(r.category)]||"#C4A89A"}"></div><div style="flex:1"><div class="rec-note">${r.note||r.category}</div><div class="rec-meta">${label(r.paidBy)}</div></div><div class="rec-amt">NT$ ${r.amount.toLocaleString()}</div></div>`).join("")}</div>`:"";
+  })()}`;
 }
 
 // ── Stat ──────────────────────────────────────────────────────────────────────
@@ -789,11 +844,25 @@ function renderEditModal(){
 }
 
 function renderBudgetModal(){
-  return `<div class="overlay" id="overlay"><div class="modal-card" style="max-height:52vh">
+  const n=names(),e=emojis();
+  const b=settings.budget, b0=settings.budget0||0, b1=settings.budget1||0;
+  return `<div class="overlay" id="overlay"><div class="modal-card">
     <div class="modal-handle"></div><div class="modal-title">設定每月預算</div>
-    <div class="field"><label>預算金額（NT$）</label><input id="budget-input" type="number" value="${budgetDraft||settings.budget}" style="font-size:22px;font-weight:700;text-align:center"/></div>
-    <div class="quick-btns">${[5000,10000,15000,20000,30000].map(v=>`<button class="quick-btn ${+budgetDraft===v?"active":""}" data-val="${v}">${v>=10000?v/10000+"萬":v/1000+"k"}</button>`).join("")}</div>
-    <button class="submit-btn" id="btn-budget-save" style="margin-top:14px">儲存</button>
+    <div class="field"><label>合計預算（NT$）</label>
+      <input id="budget-input" type="number" value="${b}" style="font-size:20px;font-weight:700;text-align:center"/>
+      <div class="quick-btns" style="margin-top:8px">${[5000,10000,15000,20000,30000].map(v=>`<button class="quick-btn" data-val="${v}">${v>=10000?v/10000+"萬":v/1000+"k"}</button>`).join("")}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      <div class="field" style="margin-bottom:0">
+        <label>${e[0]} ${n[0]} 預算</label>
+        <input id="budget-p0" type="number" value="${b0}" style="text-align:center"/>
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label>${e[1]} ${n[1]} 預算</label>
+        <input id="budget-p1" type="number" value="${b1}" style="text-align:center"/>
+      </div>
+    </div>
+    <button class="submit-btn" id="btn-budget-save">儲存</button>
   </div></div>`;
 }
 
@@ -846,18 +915,55 @@ function renderTitleModal(){
   </div></div>`;
 }
 
+function renderSettingsModal(){
+  const n=names(),e=emojis();
+  return `<div class="overlay" id="overlay"><div class="modal-card">
+    <div class="modal-handle"></div><div class="modal-title">⚙ 設定</div>
+
+    <div style="font-size:10px;font-weight:700;color:var(--sub);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">帳本</div>
+    <div class="field"><label>帳本名稱</label><input id="set-title" value="${settings.bookTitle||"我們的帳本"}"/></div>
+
+    <div style="font-size:10px;font-weight:700;color:var(--sub);letter-spacing:1px;text-transform:uppercase;margin:14px 0 10px">成員名稱</div>
+    <div class="field"><label>第一位</label>
+      <div style="display:flex;gap:8px">
+        <input id="set-e0" value="${e[0]}" style="width:56px;text-align:center;font-size:20px;border:1.5px solid var(--border);border-radius:9px;padding:9px 4px;background:var(--surface2);outline:none;color:var(--text)"/>
+        <input id="set-n0" value="${n[0]}" style="flex:1;border:1.5px solid var(--border);border-radius:9px;padding:9px 12px;font-size:14px;background:var(--surface2);outline:none;color:var(--text)"/>
+      </div>
+    </div>
+    <div class="field"><label>第二位</label>
+      <div style="display:flex;gap:8px">
+        <input id="set-e1" value="${e[1]}" style="width:56px;text-align:center;font-size:20px;border:1.5px solid var(--border);border-radius:9px;padding:9px 4px;background:var(--surface2);outline:none;color:var(--text)"/>
+        <input id="set-n1" value="${n[1]}" style="flex:1;border:1.5px solid var(--border);border-radius:9px;padding:9px 12px;font-size:14px;background:var(--surface2);outline:none;color:var(--text)"/>
+      </div>
+    </div>
+
+    <div style="font-size:10px;font-weight:700;color:var(--sub);letter-spacing:1px;text-transform:uppercase;margin:14px 0 10px">修改密碼</div>
+    <div class="field"><label>目前密碼</label><input id="set-pw-old" type="password" placeholder="輸入目前密碼"/></div>
+    <div class="field"><label>新密碼</label><input id="set-pw-new" type="password" placeholder="輸入新密碼（至少 4 字元）"/></div>
+    <div class="field"><label>確認新密碼</label><input id="set-pw-new2" type="password" placeholder="再輸入一次"/></div>
+    <div id="set-pw-msg" style="font-size:12px;color:var(--danger);margin:-8px 0 10px;display:none"></div>
+
+    <button class="submit-btn" id="btn-settings-save">儲存所有設定</button>
+  </div></div>`;
+}
+
 // ── App Events ────────────────────────────────────────────────────────────────
 function bindAppEvents(){
   document.querySelectorAll(".nav-btn").forEach(b=>{ b.onclick=()=>{tab=b.dataset.tab;render();}; });
   document.getElementById("btn-add").onclick=()=>{modal="add";form=freshForm();render();};
   document.getElementById("btn-leave").onclick=leaveRoom;
   const elTitle=document.getElementById("btn-edit-title"); if(elTitle) elTitle.onclick=()=>{modal="title";render();};
+  const elSettings=document.getElementById("btn-settings"); if(elSettings) elSettings.onclick=()=>{modal="settings";render();};
   const elFin=document.getElementById("btn-fin"); if(elFin) elFin.onclick=()=>{modal="finance";render();};
   const elFinCombined=document.getElementById("fin-view-combined");
   const elFinIndividual=document.getElementById("fin-view-individual");
   if(elFinCombined) elFinCombined.onclick=()=>{finView="combined";render();};
   if(elFinIndividual) elFinIndividual.onclick=()=>{finView="individual";render();};
-  const elBudget=document.getElementById("btn-budget"); if(elBudget) elBudget.onclick=()=>{budgetDraft=String(settings.budget);modal="budget";render();};
+  const elBudCombined=document.getElementById("bud-view-combined");
+  const elBudIndividual=document.getElementById("bud-view-individual");
+  if(elBudCombined) elBudCombined.onclick=()=>{finView="combined";render();};
+  if(elBudIndividual) elBudIndividual.onclick=()=>{finView="individual";render();};
+  const elBudget=document.getElementById("btn-budget"); if(elBudget) elBudget.onclick=()=>{modal="budget";render();};
   const elNames=document.getElementById("btn-names"); if(elNames) elNames.onclick=()=>{modal="names";render();};
 
   document.querySelectorAll(".del-btn").forEach(b=>{
@@ -871,6 +977,10 @@ function bindAppEvents(){
   if(cp) cp.onclick=()=>{let{y,m}=calMonth;m--;if(m<0){m=11;y--;}calMonth={y,m};render();};
   if(cn) cn.onclick=()=>{let{y,m}=calMonth;m++;if(m>11){m=0;y++;}calMonth={y,m};render();};
   document.querySelectorAll(".cal-cell").forEach(c=>{ c.onclick=()=>{calSel=calSel===c.dataset.date?null:c.dataset.date;render();}; });
+  const cvC=document.getElementById("cal-view-combined"),cvP0=document.getElementById("cal-view-p0"),cvP1=document.getElementById("cal-view-p1");
+  if(cvC) cvC.onclick=()=>{calView="combined";calSel=null;render();};
+  if(cvP0) cvP0.onclick=()=>{calView="p0";calSel=null;render();};
+  if(cvP1) cvP1.onclick=()=>{calView="p1";calSel=null;render();};
 
   const ov=document.getElementById("overlay");
   if(ov) ov.onclick=e=>{ if(e.target===ov){modal=null;render();} };
@@ -918,8 +1028,12 @@ function bindAppEvents(){
     document.getElementById("budget-input").oninput=e=>{budgetDraft=e.target.value;};
     document.querySelectorAll(".quick-btn").forEach(b=>{b.onclick=()=>{budgetDraft=b.dataset.val;render();};});
     document.getElementById("btn-budget-save").onclick=async()=>{
-      const v=+budgetDraft; if(!v||isNaN(v)||v<=0) return showToast("請輸入有效預算");
-      await fbSave({budget:v}); modal=null; render(); showToast("✦ 預算已更新");
+      const v=+document.getElementById("budget-input").value;
+      const v0=+document.getElementById("budget-p0").value;
+      const v1=+document.getElementById("budget-p1").value;
+      if(!v||isNaN(v)||v<=0) return showToast("請輸入有效預算");
+      await fbSave({budget:v, budget0:v0||0, budget1:v1||0});
+      modal=null; render(); showToast("✦ 預算已更新");
     };
   }
   if(modal==="finance"){
@@ -975,6 +1089,42 @@ function bindAppEvents(){
       await fbSave({bookTitle:v}); modal=null; render(); showToast("✦ 帳本名稱已更新");
     };
     ti.onkeydown=e=>{ if(e.key==="Enter") document.getElementById("btn-title-save").click(); };
+  }
+  if(modal==="settings"){
+    document.getElementById("btn-settings-save").onclick=async()=>{
+      const p={};
+      const title=document.getElementById("set-title").value.trim();
+      const e0=document.getElementById("set-e0").value||emojis()[0];
+      const n0=document.getElementById("set-n0").value||names()[0];
+      const e1=document.getElementById("set-e1").value||emojis()[1];
+      const n1=document.getElementById("set-n1").value||names()[1];
+      if(title) p.bookTitle=title;
+      p.names=[n0,n1]; p.nameEmojis=[e0,e1];
+
+      // Password change (optional)
+      const pwOld=document.getElementById("set-pw-old").value.trim();
+      const pwNew=document.getElementById("set-pw-new").value.trim();
+      const pwNew2=document.getElementById("set-pw-new2").value.trim();
+      const msg=document.getElementById("set-pw-msg");
+      if(pwNew||pwOld){
+        if(!pwOld){ msg.textContent="請輸入目前密碼"; msg.style.display="block"; return; }
+        if(pwNew.length<4){ msg.textContent="新密碼至少 4 個字元"; msg.style.display="block"; return; }
+        if(pwNew!==pwNew2){ msg.textContent="兩次新密碼不一致"; msg.style.display="block"; return; }
+        // Verify old password
+        const [oldHash, snap] = await Promise.all([
+          hashPw(pwOld),
+          get(ref(db,`roomAuth/${roomId}/pwHash`))
+        ]);
+        if(oldHash!==snap.val()){ msg.textContent="目前密碼錯誤"; msg.style.display="block"; return; }
+        // Save new password
+        const newHash=await hashPw(pwNew);
+        await set(ref(db,`roomAuth/${roomId}/pwHash`),newHash);
+        showToast("✦ 密碼已更新");
+      }
+
+      if(Object.keys(p).length) await fbSave(p);
+      modal=null; render(); showToast("✦ 設定已儲存");
+    };
   }
 }
 
