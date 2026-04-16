@@ -221,17 +221,18 @@ async function fbSetSettings(p){ await update(rRef("settings"),p); }
 async function createRoom(code, pw){
   authLoading=true; authError=""; render();
   try {
-    // Check if room already exists
-    const existing = await get(raRef("pwHash"));
+    // Hash pw + check existence in parallel
+    const [hash, existing] = await Promise.all([
+      hashPw(pw),
+      get(ref(db, `roomAuth/${code}/pwHash`))
+    ]);
     if(existing.exists()){
       authError="此房間碼已存在，請用不同的碼或直接加入"; authLoading=false; render(); return;
     }
-    const hash = await hashPw(pw);
-    await set(raRef("pwHash"), hash);
-    await set(raRef("createdAt"), Date.now());
+    // Single write: hash + createdAt together
+    await set(ref(db, `roomAuth/${code}`), { pwHash: hash, createdAt: Date.now() });
     localStorage.setItem("coup_room", code);
-    roomId = code;
-    authedRoom = true;
+    roomId = code; authedRoom = true;
     subscribeRoom();
     showToast(`✦ 房間 ${code} 建立成功！把房間碼和密碼分享給對方`);
     authLoading=false; render();
@@ -241,17 +242,19 @@ async function createRoom(code, pw){
 async function joinRoom(code, pw){
   authLoading=true; authError=""; render();
   try {
-    const snap = await get(ref(db, `roomAuth/${code}/pwHash`));
+    // Hash pw + fetch stored hash in parallel
+    const [hash, snap] = await Promise.all([
+      hashPw(pw),
+      get(ref(db, `roomAuth/${code}/pwHash`))
+    ]);
     if(!snap.exists()){
       authError="找不到此房間，請確認房間碼"; authLoading=false; render(); return;
     }
-    const hash = await hashPw(pw);
     if(hash !== snap.val()){
       authError="密碼錯誤，請再試一次"; authLoading=false; render(); return;
     }
     localStorage.setItem("coup_room", code);
-    roomId = code;
-    authedRoom = true;
+    roomId = code; authedRoom = true;
     subscribeRoom();
     showToast(`✦ 歡迎回來！房間 ${code}`);
     authLoading=false; render();
