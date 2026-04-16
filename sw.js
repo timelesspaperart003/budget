@@ -1,57 +1,52 @@
-const CACHE = "couple-budget-v1";
-const ASSETS = [
-  "/",
-  "/index.html",
-  "/manifest.json",
-  "https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap"
-];
+// 每次部署更新這個版本號，瀏覽器就會自動載入新版
+const CACHE = "couple-budget-v2";
 
-// Install: cache core assets
+// Install: 預先快取核心資源
 self.addEventListener("install", e => {
   e.waitUntil(
     caches.open(CACHE).then(cache =>
-      cache.addAll(ASSETS).catch(() => {}) // don't fail install on network errors
+      cache.addAll(["/", "/index.html", "/manifest.json"]).catch(() => {})
     )
   );
-  self.skipWaiting();
+  self.skipWaiting(); // 立即接管，不等舊 SW 結束
 });
 
-// Activate: clean old caches
+// Activate: 刪除所有舊快取
 self.addEventListener("activate", e => {
   e.waitUntil(
     caches.keys().then(keys =>
       Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))
     )
   );
-  self.clients.claim();
+  self.clients.claim(); // 立即控制所有分頁
 });
 
-// Fetch: network-first for Firebase/API, cache-first for static assets
+// Fetch: network-first — 優先從網路拿最新版，失敗才用快取
 self.addEventListener("fetch", e => {
   const url = new URL(e.request.url);
 
-  // Always go network for Firebase, Anthropic API, Google Fonts loading
+  // Firebase / Anthropic / 字型 → 完全不攔截，直接走網路
   if (
     url.hostname.includes("firebase") ||
     url.hostname.includes("anthropic") ||
     url.hostname.includes("gstatic") ||
     url.hostname.includes("googleapis") ||
     e.request.method !== "GET"
-  ) {
-    return; // let browser handle normally
-  }
+  ) return;
 
-  // Cache-first for our own static files
   e.respondWith(
-    caches.match(e.request).then(cached => {
-      if (cached) return cached;
-      return fetch(e.request).then(res => {
+    fetch(e.request)
+      .then(res => {
+        // 成功取得新版 → 更新快取
         if (res && res.status === 200) {
           const clone = res.clone();
           caches.open(CACHE).then(cache => cache.put(e.request, clone));
         }
         return res;
-      }).catch(() => caches.match("/index.html"));
-    })
+      })
+      .catch(() =>
+        // 離線或網路失敗 → 從快取回傳
+        caches.match(e.request).then(cached => cached || caches.match("/index.html"))
+      )
   );
 });
