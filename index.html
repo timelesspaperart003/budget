@@ -219,30 +219,33 @@ async function fbSetSettings(p){ await update(rRef("settings"),p); }
 
 // ── Room Auth ─────────────────────────────────────────────────────────────────
 async function createRoom(code, pw){
-  authLoading=true; authError=""; render();
+  authLoading=true; authError="";
+  // Show a simple inline loading state without full re-render (avoids DOM teardown)
+  const btn=document.getElementById("btn-create");
+  if(btn){ btn.disabled=true; btn.textContent="建立中…"; }
   try {
-    // Hash pw + check existence in parallel
     const [hash, existing] = await Promise.all([
       hashPw(pw),
       get(ref(db, `roomAuth/${code}/pwHash`))
     ]);
     if(existing.exists()){
-      authError="此房間碼已存在，請用不同的碼或直接加入"; authLoading=false; render(); return;
+      authError="此房間碼已存在，請用不同的碼或直接加入";
+      authLoading=false; render(); return;
     }
-    // Single write: hash + createdAt together
     await set(ref(db, `roomAuth/${code}`), { pwHash: hash, createdAt: Date.now() });
     localStorage.setItem("coup_room", code);
     roomId = code; authedRoom = true;
+    authLoading=false;
     subscribeRoom();
     showToast(`✦ 房間 ${code} 建立成功！把房間碼和密碼分享給對方`);
-    authLoading=false; render();
   } catch(e){ authError="建立失敗，請重試"; authLoading=false; render(); }
 }
 
 async function joinRoom(code, pw){
-  authLoading=true; authError=""; render();
+  authLoading=true; authError="";
+  const btn=document.getElementById("btn-join");
+  if(btn){ btn.disabled=true; btn.textContent="驗證中…"; }
   try {
-    // Hash pw + fetch stored hash in parallel
     const [hash, snap] = await Promise.all([
       hashPw(pw),
       get(ref(db, `roomAuth/${code}/pwHash`))
@@ -255,9 +258,9 @@ async function joinRoom(code, pw){
     }
     localStorage.setItem("coup_room", code);
     roomId = code; authedRoom = true;
+    authLoading=false;
     subscribeRoom();
     showToast(`✦ 歡迎回來！房間 ${code}`);
-    authLoading=false; render();
   } catch(e){ authError="加入失敗，請重試"; authLoading=false; render(); }
 }
 
@@ -381,9 +384,9 @@ function bindAuthEvents(){
     await createRoom(code, pw);
   };
 
-  // Enter key support
-  if(joinPw) joinPw.onkeydown=e=>{ if(e.key==="Enter") document.getElementById("btn-join").click(); };
-  if(newPw2) newPw2.onkeydown=e=>{ if(e.key==="Enter") document.getElementById("btn-create").click(); };
+  // Enter key support — guard against null (elements disappear during loading render)
+  if(joinPw) joinPw.onkeydown=e=>{ if(e.key==="Enter") document.getElementById("btn-join")?.click(); };
+  if(newPw2) newPw2.onkeydown=e=>{ if(e.key==="Enter") document.getElementById("btn-create")?.click(); };
 }
 
 // ── Main App ──────────────────────────────────────────────────────────────────
