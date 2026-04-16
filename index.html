@@ -662,13 +662,16 @@ function bindMainEvents(){
 }
 
 // ── Boot: Anonymous Auth ──────────────────────────────────────────────────────
+// Kick off anonymous sign-in immediately on page load (warms up Firebase connection)
+// so it's ready before the user even touches the form.
+signInAnonymously(auth).catch(()=>{});
+
 onAuthStateChanged(auth, user=>{
   if(user){
     authUser=user;
-    // If we have a saved roomId, still require password re-entry for security
-    // (authedRoom stays false until password verified)
     render();
   } else {
+    // Fallback retry if first attempt failed
     signInAnonymously(auth).catch(e=>{ console.error(e); authError="認證失敗，請重新整理"; render(); });
   }
 });
