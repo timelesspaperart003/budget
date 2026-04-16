@@ -110,6 +110,8 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.3;}
 .rec-meta{font-size:11px;color:var(--mute);margin-top:1px;}
 .rec-amt{font-size:13px;font-weight:700;color:var(--clay);white-space:nowrap;}
 .del-btn{background:none;border:none;cursor:pointer;font-size:16px;color:var(--mute);padding:0 2px;opacity:0;transition:opacity .2s;line-height:1;}
+.edit-rec-btn{background:none;border:none;cursor:pointer;font-size:13px;color:var(--mute);padding:0 2px;opacity:0;transition:opacity .2s;line-height:1;}
+.rec-row:hover .edit-rec-btn{opacity:1!important;}
 .del-placeholder{width:22px;flex-shrink:0;}
 .empty{text-align:center;color:var(--mute);padding:20px 0;font-size:13px;}
 
@@ -206,12 +208,12 @@ let settings={
 let finView="combined"; // "combined" | "individual" — toggled by user
 let calMonth={y:new Date().getFullYear(),m:new Date().getMonth()}, calSel=null;
 let aiLoading=false;
-let form=freshForm(), budgetDraft="";
+let form=freshForm(), budgetDraft="", editKey=null; // editKey: key of record being edited
 let authError="";
 let setupDraft={bookTitle:"我們的帳本",name0:"小美",emoji0:"🌸",name1:"小丑",emoji1:"🤡"};
 let unsubRec, unsubSet;
 
-function freshForm(){ return {date:today(),amount:"",category:CATEGORIES[0],paidBy:myIndex??0,note:"",desc:""}; }
+function freshForm(){ return {date:today(),amount:"",category:CATEGORIES[0],paidBy:myIndex??0,note:"",desc:"",splitEvenly:false}; }
 function today(){ return new Date().toISOString().slice(0,10); }
 function thisMonthKey(){ const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`; }
 function genCode(){ return Math.random().toString(36).slice(2,8).toUpperCase(); }
@@ -236,6 +238,7 @@ function subscribeRoom(){
 
 async function fbAdd(rec){ syncing=true; render(); await push(rRef("records"),rec); syncing=false; }
 async function fbDel(key){ await remove(rRef("records",key)); }
+async function fbUpdate(key,patch){ await update(rRef("records",key),patch); }
 async function fbSave(p){ await update(rRef("settings"),p); settings={...settings,...p}; }
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
@@ -514,6 +517,7 @@ function renderApp(){
   </nav>
 
   ${modal==="add"     ? renderAddModal()    : ""}
+  ${modal==="edit"    ? renderEditModal()   : ""}
   ${modal==="budget"  ? renderBudgetModal() : ""}
   ${modal==="finance" ? renderFinModal()    : ""}
   ${modal==="names"   ? renderNamesModal()  : ""}
@@ -637,6 +641,7 @@ function renderHome(tbp,total,spent,budget,budgetPct,budgetLeft,budgetOver,budge
           <div class="rec-meta">${r.date} · ${r.category.split(" ")[0]} · ${label(r.paidBy)}</div>
         </div>
         <div class="rec-amt">NT$ ${r.amount.toLocaleString()}</div>
+        <button class="edit-rec-btn" data-key="${r._key}" title="編輯">✎</button>
         ${mine?`<button class="del-btn" data-key="${r._key}">×</button>`:`<span class="del-placeholder"></span>`}
       </div>`;
     }).join("")}
@@ -704,8 +709,9 @@ function renderStat(tbp,total){
 
 // ── Modals ────────────────────────────────────────────────────────────────────
 function renderAddModal(){
-  const{date,amount,category,note,desc}=form;
+  const{date,amount,category,note,desc,splitEvenly}=form;
   const paidBy=form.paidBy??myIndex;
+  const half=amount&&!isNaN(+amount)?(+amount/2).toLocaleString():"—";
   return `<div class="overlay" id="overlay"><div class="modal-card">
     <div class="modal-handle"></div><div class="modal-title">新增支出</div>
     <div class="ai-row"><input class="ai-input" id="ai-desc" placeholder="描述這筆消費（AI 自動分類）" value="${desc}"/><button class="ai-btn" id="ai-btn">${aiLoading?"…":"✦ AI"}</button></div>
@@ -716,13 +722,51 @@ function renderAddModal(){
     <div class="field"><label>分類</label><div class="cat-grid">
       ${CATEGORIES.map((c,i)=>`<button class="cat-chip" data-cat="${c}" style="${category===c?`background:${CAT_COLORS[i]};color:var(--surface);border-color:${CAT_COLORS[i]}`:""}">${c}</button>`).join("")}
     </div></div>
-    <div class="field"><label>誰付錢？</label>
+
+    <!-- Split toggle -->
+    <div class="field">
+      <label>記帳方式</label>
+      <div style="display:flex;background:var(--surface2);border-radius:10px;padding:3px;gap:3px">
+        <button id="split-no" style="flex:1;border:none;cursor:pointer;border-radius:8px;padding:9px 4px;font-size:13px;font-weight:600;transition:all .2s;${!splitEvenly?"background:var(--clay);color:var(--surface)":"background:transparent;color:var(--sub)"}">一人記帳</button>
+        <button id="split-yes" style="flex:1;border:none;cursor:pointer;border-radius:8px;padding:9px 4px;font-size:13px;font-weight:600;transition:all .2s;${splitEvenly?"background:var(--clay);color:var(--surface)":"background:transparent;color:var(--sub)"}">平均攤分 ÷2</button>
+      </div>
+      ${splitEvenly&&amount?`<div style="display:flex;justify-content:space-between;margin-top:8px;padding:8px 12px;background:var(--surface2);border-radius:8px;font-size:12px;color:var(--sub)">
+        <span>${label(0)}　<b style="color:var(--text)">NT$ ${(+amount/2).toLocaleString(undefined,{maximumFractionDigits:0})}</b></span>
+        <span>${label(1)}　<b style="color:var(--text)">NT$ ${(+amount/2).toLocaleString(undefined,{maximumFractionDigits:0})}</b></span>
+      </div>`:""}
+    </div>
+
+    <!-- Paid by (hidden when split) -->
+    ${!splitEvenly?`<div class="field"><label>誰付錢？</label>
       <div style="display:flex;gap:10px">
         ${names().map((n,i)=>`<button class="paid-btn" data-paid="${i}" style="flex:1;border:1.5px solid ${paidBy===i?(i===0?"var(--rose)":"var(--sage)"):"var(--border)"};border-radius:10px;padding:10px;background:${paidBy===i?(i===0?"var(--rose)":"var(--sage)"):"var(--surface2)"};cursor:pointer;font-size:13px;color:${paidBy===i?"var(--surface)":"var(--sub)"};">${emojis()[i]} ${n}</button>`).join("")}
       </div>
-    </div>
+    </div>`:""}
+
     <div class="field"><label>備註</label><input id="f-note" placeholder="備忘…" value="${note}"/></div>
-    <button class="submit-btn" id="btn-submit">記帳</button>
+    <button class="submit-btn" id="btn-submit">${splitEvenly?"各記一半 ÷2":"記帳"}</button>
+  </div></div>`;
+}
+
+function renderEditModal(){
+  const r=records[editKey]; if(!r) return "";
+  const{date,amount,category,paidBy,note}=r;
+  return `<div class="overlay" id="overlay"><div class="modal-card">
+    <div class="modal-handle"></div><div class="modal-title">編輯支出</div>
+    <div class="row2">
+      <div class="field"><label>日期</label><input type="date" id="e-date" value="${date}"/></div>
+      <div class="field"><label>金額（NT$）</label><input type="number" id="e-amount" value="${amount}"/></div>
+    </div>
+    <div class="field"><label>分類</label><div class="cat-grid">
+      ${CATEGORIES.map((c,i)=>`<button class="cat-chip e-cat" data-cat="${c}" style="${category===c?`background:${CAT_COLORS[i]};color:var(--surface);border-color:${CAT_COLORS[i]}`:""}">${c}</button>`).join("")}
+    </div></div>
+    <div class="field"><label>誰付錢？</label>
+      <div style="display:flex;gap:10px">
+        ${names().map((n,i)=>`<button class="e-paid-btn" data-paid="${i}" style="flex:1;border:1.5px solid ${paidBy===i?(i===0?"var(--rose)":"var(--sage)"):"var(--border)"};border-radius:10px;padding:10px;background:${paidBy===i?(i===0?"var(--rose)":"var(--sage)"):"var(--surface2)"};cursor:pointer;font-size:13px;color:${paidBy===i?"var(--surface)":"var(--sub)"};">${emojis()[i]} ${n}</button>`).join("")}
+      </div>
+    </div>
+    <div class="field"><label>備註</label><input id="e-note" placeholder="備忘…" value="${note||""}"/></div>
+    <button class="submit-btn" id="btn-edit-save">儲存修改</button>
   </div></div>`;
 }
 
@@ -793,6 +837,9 @@ function bindAppEvents(){
   document.querySelectorAll(".del-btn").forEach(b=>{
     b.onclick=()=>{ if(confirm("確定刪除這筆支出？")) fbDel(b.dataset.key); };
   });
+  document.querySelectorAll(".edit-rec-btn").forEach(b=>{
+    b.onclick=()=>{ editKey=b.dataset.key; modal="edit"; render(); };
+  });
 
   const cp=document.getElementById("cal-prev"),cn=document.getElementById("cal-next");
   if(cp) cp.onclick=()=>{let{y,m}=calMonth;m--;if(m<0){m=11;y--;}calMonth={y,m};render();};
@@ -806,10 +853,13 @@ function bindAppEvents(){
     const ad=document.getElementById("ai-desc");
     ad.oninput=()=>{form.desc=ad.value;};
     document.getElementById("f-date").onchange=e=>{form.date=e.target.value;};
-    document.getElementById("f-amount").oninput=e=>{form.amount=e.target.value;};
+    document.getElementById("f-amount").oninput=e=>{form.amount=e.target.value; if(form.splitEvenly) render();};
     document.getElementById("f-note").oninput=e=>{form.note=e.target.value;};
     document.querySelectorAll(".cat-chip").forEach(b=>{b.onclick=()=>{form.category=b.dataset.cat;render();};});
     document.querySelectorAll(".paid-btn").forEach(b=>{b.onclick=()=>{form.paidBy=+b.dataset.paid;render();};});
+    const splitNo=document.getElementById("split-no"), splitYes=document.getElementById("split-yes");
+    if(splitNo) splitNo.onclick=()=>{form.splitEvenly=false;render();};
+    if(splitYes) splitYes.onclick=()=>{form.splitEvenly=true;render();};
     document.getElementById("ai-btn").onclick=async()=>{
       if(!form.desc.trim()) return showToast("請先輸入描述");
       aiLoading=true; render();
@@ -820,8 +870,22 @@ function bindAppEvents(){
       if(!form.amount||isNaN(+form.amount)) return showToast("請輸入正確金額");
       const btn=document.getElementById("btn-submit");
       btn.disabled=true; btn.textContent="記帳中…";
-      await fbAdd({date:form.date,amount:+form.amount,category:form.category,paidBy:form.paidBy??myIndex,note:form.note});
-      modal=null; form=freshForm(); render(); showToast("✦ 記帳成功");
+      const{date,category,note,splitEvenly}=form;
+      const total=+form.amount;
+      if(splitEvenly){
+        // Write two separate records, one per person, each half the amount
+        const half=Math.round(total/2*100)/100;
+        const remainder=Math.round((total-half)*100)/100;
+        await Promise.all([
+          fbAdd({date,amount:half,category,paidBy:0,note:note||(names()[0]+" 攤分"),splitFrom:true}),
+          fbAdd({date,amount:remainder,category,paidBy:1,note:note||(names()[1]+" 攤分"),splitFrom:true})
+        ]);
+        showToast(`✦ 已各記 NT$ ${half.toLocaleString()} 和 NT$ ${remainder.toLocaleString()}`);
+      } else {
+        await fbAdd({date,amount:total,category,paidBy:form.paidBy??myIndex,note});
+        showToast("✦ 記帳成功");
+      }
+      modal=null; form=freshForm(); render();
     };
   }
   if(modal==="budget"){
@@ -853,6 +917,26 @@ function bindAppEvents(){
       const n1=document.getElementById("nm-n1").value||names()[1];
       await fbSave({names:[n0,n1],nameEmojis:[e0,e1]});
       modal=null; render(); showToast("✦ 名稱已更新");
+    };
+  }
+  if(modal==="edit"&&editKey&&records[editKey]){
+    // local draft for edit — update records[editKey] in place for re-renders
+    document.querySelectorAll(".e-cat").forEach(b=>{
+      b.onclick=()=>{ records[editKey]={...records[editKey],category:b.dataset.cat}; render(); };
+    });
+    document.querySelectorAll(".e-paid-btn").forEach(b=>{
+      b.onclick=()=>{ records[editKey]={...records[editKey],paidBy:+b.dataset.paid}; render(); };
+    });
+    document.getElementById("btn-edit-save").onclick=async()=>{
+      const date=document.getElementById("e-date").value;
+      const amount=+document.getElementById("e-amount").value;
+      const note=document.getElementById("e-note").value;
+      if(!amount||isNaN(amount)) return showToast("請輸入正確金額");
+      const btn=document.getElementById("btn-edit-save");
+      btn.disabled=true; btn.textContent="儲存中…";
+      const{category,paidBy}=records[editKey];
+      await fbUpdate(editKey,{date,amount,category,paidBy,note});
+      modal=null; editKey=null; render(); showToast("✦ 已更新");
     };
   }
   if(modal==="title"){
