@@ -642,7 +642,7 @@ function renderHome(tbp,total,spent,budget,budgetPct,budgetLeft,budgetOver,budge
         </div>
         <div class="rec-amt">NT$ ${r.amount.toLocaleString()}</div>
         <button class="edit-rec-btn" data-key="${r._key}" title="編輯">✎</button>
-        ${mine?`<button class="del-btn" data-key="${r._key}">×</button>`:`<span class="del-placeholder"></span>`}
+        <button class="del-btn" data-key="${r._key}">×</button>
       </div>`;
     }).join("")}
   </div>`;
