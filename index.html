@@ -192,9 +192,10 @@ let myIndex=null;          // 0 or 1 — picked each session
 let screen="loading";
 let tab="home", records={}, syncing=false, modal=null;
 let settings={
-  budget:10000,salary:60000,savingsGoal:15000,lastSaved:12000,
+  budget:10000,salary0:30000,salary1:30000,savingsGoal:15000,lastSaved:12000,
   bookTitle:"我們的帳本",names:["小美","小丑"],nameEmojis:["🌸","🤡"]
 };
+let finView="combined"; // "combined" | "individual" — toggled by user
 let calMonth={y:new Date().getFullYear(),m:new Date().getMonth()}, calSel=null;
 let aiLoading=false;
 let form=freshForm(), budgetDraft="";
@@ -291,7 +292,7 @@ function leaveRoom(){
   if(unsubRec) unsubRec();
   if(unsubSet) unsubSet();
   roomId=null; myIndex=null; screen="login"; authError="";
-  records={}; settings={budget:10000,salary:60000,savingsGoal:15000,lastSaved:12000,
+  records={}; settings={budget:10000,salary0:30000,salary1:30000,savingsGoal:15000,lastSaved:12000,
     bookTitle:"我們的帳本",names:["小美","小丑"],nameEmojis:["🌸","🤡"]};
   render();
 }
@@ -464,10 +465,11 @@ function bindIdentityEvents(){
 // ── Main App ──────────────────────────────────────────────────────────────────
 function renderApp(){
   const tbp=totalByPartner(),total=tbp[0]+tbp[1],spent=thisMonthSpent();
-  const{budget,salary,savingsGoal,lastSaved,bookTitle}=settings;
+  const{budget,salary0,salary1,savingsGoal,lastSaved,bookTitle}=settings;
+  const totalSalary=(salary0||0)+(salary1||0);
   const budgetPct=budget>0?Math.min(spent/budget*100,100):0;
   const budgetLeft=budget-spent,budgetOver=budgetLeft<0;
-  const proj=salary-spent,savRate=savingsGoal>0?Math.min(proj/savingsGoal*100,100):0;
+  const proj=totalSalary-spent,savRate=savingsGoal>0?Math.min(proj/savingsGoal*100,100):0;
   const lastRate=savingsGoal>0?(lastSaved/savingsGoal*100).toFixed(0):0;
   const budgetBarColor=budgetOver?"var(--danger)":budgetPct>=80?"var(--warn)":"var(--sage)";
   const savColor=proj>=savingsGoal?"var(--green)":proj>=0?"var(--warn)":"var(--danger)";
@@ -492,7 +494,7 @@ function renderApp(){
   </header>
 
   <main class="main">
-    ${tab==="home"  ? renderHome(tbp,total,spent,budget,budgetPct,budgetLeft,budgetOver,budgetBarColor,salary,savingsGoal,lastSaved,proj,savRate,lastRate,savColor) : ""}
+    ${tab==="home"  ? renderHome(tbp,total,spent,budget,budgetPct,budgetLeft,budgetOver,budgetBarColor,salary0,salary1,totalSalary,savingsGoal,lastSaved,proj,savRate,lastRate,savColor) : ""}
     ${tab==="chart" ? renderChart() : ""}
     ${tab==="cal"   ? renderCal()   : ""}
     ${tab==="stat"  ? renderStat(tbp,total) : ""}
@@ -512,15 +514,16 @@ function renderApp(){
 }
 
 // ── Home ──────────────────────────────────────────────────────────────────────
-function renderHome(tbp,total,spent,budget,budgetPct,budgetLeft,budgetOver,budgetBarColor,salary,savingsGoal,lastSaved,proj,savRate,lastRate,savColor){
+function renderHome(tbp,total,spent,budget,budgetPct,budgetLeft,budgetOver,budgetBarColor,salary0,salary1,totalSalary,savingsGoal,lastSaved,proj,savRate,lastRate,savColor){
   const recs=recList(),bd=barData(),bdMax=bd.length?Math.max(...bd.map(d=>d.value)):1;
-  return `
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <div class="card-title" style="margin-bottom:0">本月財務概覽</div>
-      <button class="edit-btn" id="btn-fin">✎ 編輯</button>
-    </div>
-    <div class="fin-row"><span class="fin-label">💴 當月薪水</span><span class="fin-val">NT$ ${salary.toLocaleString()}</span></div>
+  // Per-person derived
+  const spentByP=tbp; // tbp[i] = each person's spending
+  const salaries=[salary0||0,salary1||0];
+  const projByP=salaries.map((s,i)=>s-spentByP[i]);
+  const savColorByP=projByP.map(p=>p>=savingsGoal/2?"var(--green)":p>=0?"var(--warn)":"var(--danger)");
+
+  const finCardCombined=`
+    <div class="fin-row"><span class="fin-label">💴 合計薪水</span><span class="fin-val">NT$ ${totalSalary.toLocaleString()}</span></div>
     <div class="fin-divider"></div>
     <div class="fin-row"><span class="fin-label">💸 本月支出</span><span class="fin-val" style="color:var(--clay)">－ NT$ ${spent.toLocaleString()}</span></div>
     <div class="fin-divider"></div>
@@ -541,7 +544,45 @@ function renderHome(tbp,total,spent,budget,budgetPct,budgetLeft,budgetOver,budge
         <span style="font-size:15px;font-weight:700;color:var(--slate)">NT$ ${lastSaved.toLocaleString()}</span>
         <span style="font-size:10px;color:${+lastRate>=100?"var(--green)":"var(--mute)"}">${lastRate}% 達成</span>
       </div>
+    </div>`;
+
+  const finCardIndividual=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:2px">
+      ${names().map((n,i)=>{
+        const sc=savColorByP[i];
+        return `<div style="background:var(--surface2);border-radius:12px;padding:12px;border-left:3px solid ${i===0?"var(--rose)":"var(--sage)"}">
+          <div style="font-size:11px;color:var(--sub);margin-bottom:6px">${emojis()[i]} ${n}</div>
+          <div style="font-size:10px;color:var(--mute)">薪水</div>
+          <div style="font-size:14px;font-weight:700;margin-bottom:4px">NT$ ${salaries[i].toLocaleString()}</div>
+          <div style="font-size:10px;color:var(--mute)">支出</div>
+          <div style="font-size:13px;font-weight:600;color:var(--clay);margin-bottom:4px">－ NT$ ${spentByP[i].toLocaleString()}</div>
+          <div style="height:1px;background:var(--border);margin:6px 0"></div>
+          <div style="font-size:10px;color:var(--mute)">預計可存</div>
+          <div style="font-size:15px;font-weight:800;color:${sc}">${projByP[i]>=0?"":"－"}NT$ ${Math.abs(projByP[i]).toLocaleString()}</div>
+        </div>`;
+      }).join("")}
     </div>
+    <div class="last-saved-row" style="margin-top:8px">
+      <div style="display:flex;align-items:center;gap:6px"><span>✅</span><span style="font-size:12px;color:var(--sub)">上月成功存入</span></div>
+      <div style="display:flex;align-items:baseline;gap:6px">
+        <span style="font-size:15px;font-weight:700;color:var(--slate)">NT$ ${lastSaved.toLocaleString()}</span>
+        <span style="font-size:10px;color:${+lastRate>=100?"var(--green)":"var(--mute)"}">${lastRate}% 達成</span>
+      </div>
+    </div>`;
+
+  return `
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div class="card-title" style="margin-bottom:0">本月財務概覽</div>
+      <div style="display:flex;gap:6px;align-items:center">
+        <div style="display:flex;background:var(--surface2);border-radius:8px;padding:2px;gap:2px">
+          <button id="fin-view-combined" style="border:none;cursor:pointer;border-radius:6px;padding:4px 8px;font-size:10px;font-weight:600;letter-spacing:.5px;transition:all .15s;${finView==="combined"?"background:var(--clay);color:var(--surface)":"background:transparent;color:var(--mute)"}">合計</button>
+          <button id="fin-view-individual" style="border:none;cursor:pointer;border-radius:6px;padding:4px 8px;font-size:10px;font-weight:600;letter-spacing:.5px;transition:all .15s;${finView==="individual"?"background:var(--clay);color:var(--surface)":"background:transparent;color:var(--mute)"}">各自</button>
+        </div>
+        <button class="edit-btn" id="btn-fin">✎</button>
+      </div>
+    </div>
+    ${finView==="combined" ? finCardCombined : finCardIndividual}
   </div>
 
   <div class="card">
@@ -685,11 +726,13 @@ function renderBudgetModal(){
 }
 
 function renderFinModal(){
-  const{salary,savingsGoal,lastSaved}=settings;
+  const{salary0,salary1,savingsGoal,lastSaved}=settings;
+  const n=names(),e=emojis();
   return `<div class="overlay" id="overlay"><div class="modal-card">
     <div class="modal-handle"></div><div class="modal-title">財務設定</div>
-    <div class="field"><label>💴 當月薪水（兩人合計，NT$）</label><input id="fin-salary" type="number" value="${salary}"/></div>
-    <div class="field"><label>🎯 當月預計存款（NT$）</label><input id="fin-goal" type="number" value="${savingsGoal}"/><div class="hint">薪水扣掉支出後，希望能存多少</div></div>
+    <div class="field"><label>💴 ${e[0]} ${n[0]} 的薪水（NT$）</label><input id="fin-s0" type="number" value="${salary0||0}"/></div>
+    <div class="field"><label>💴 ${e[1]} ${n[1]} 的薪水（NT$）</label><input id="fin-s1" type="number" value="${salary1||0}"/></div>
+    <div class="field"><label>🎯 當月預計存款（NT$）</label><input id="fin-goal" type="number" value="${savingsGoal}"/><div class="hint">兩人薪水扣掉支出後，希望能存多少</div></div>
     <div class="field"><label>✅ 上月成功存入（NT$）</label><input id="fin-last" type="number" value="${lastSaved}"/><div class="hint">上個月實際存進帳戶的金額</div></div>
     <button class="submit-btn" id="btn-fin-save">儲存</button>
   </div></div>`;
@@ -730,6 +773,10 @@ function bindAppEvents(){
   document.getElementById("btn-leave").onclick=leaveRoom;
   const elTitle=document.getElementById("btn-edit-title"); if(elTitle) elTitle.onclick=()=>{modal="title";render();};
   const elFin=document.getElementById("btn-fin"); if(elFin) elFin.onclick=()=>{modal="finance";render();};
+  const elFinCombined=document.getElementById("fin-view-combined");
+  const elFinIndividual=document.getElementById("fin-view-individual");
+  if(elFinCombined) elFinCombined.onclick=()=>{finView="combined";render();};
+  if(elFinIndividual) elFinIndividual.onclick=()=>{finView="individual";render();};
   const elBudget=document.getElementById("btn-budget"); if(elBudget) elBudget.onclick=()=>{budgetDraft=String(settings.budget);modal="budget";render();};
   const elNames=document.getElementById("btn-names"); if(elNames) elNames.onclick=()=>{modal="names";render();};
 
@@ -775,10 +822,12 @@ function bindAppEvents(){
     };
   }
   if(modal==="finance"){
-    const s=document.getElementById("fin-salary"),g=document.getElementById("fin-goal"),l=document.getElementById("fin-last");
+    const s0=document.getElementById("fin-s0"),s1=document.getElementById("fin-s1");
+    const g=document.getElementById("fin-goal"),l=document.getElementById("fin-last");
     document.getElementById("btn-fin-save").onclick=async()=>{
       const p={};
-      if(+s.value>0) p.salary=+s.value;
+      if(+s0.value>=0) p.salary0=+s0.value;
+      if(+s1.value>=0) p.salary1=+s1.value;
       if(+g.value>0) p.savingsGoal=+g.value;
       if(l.value!==""&&+l.value>=0) p.lastSaved=+l.value;
       if(Object.keys(p).length) await fbSave(p);
