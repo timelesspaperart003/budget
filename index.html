@@ -316,22 +316,40 @@ function leaveRoom(){
 }
 
 // ── AI ────────────────────────────────────────────────────────────────────────
-async function aiClassify(desc){
+// Single call that returns category, note, amount, paidBy all at once
+async function aiAnalyze(desc){
+  const n=names();
+  const prompt=`你是記帳助手，從以下消費描述中抽取資訊，只回傳 JSON，不要其他文字。
+
+描述：「${desc}」
+
+請回傳以下格式：
+{
+  "category": "從這裡選一個最適合的分類：${CATEGORIES.join("、")}",
+  "note": "簡短備註（10字以內中文，精簡描述這筆消費）",
+  "amount": 數字或null（從描述中抽取金額數字，沒有就回傳null）,
+  "paidBy": 數字或null（0代表${n[0]}，1代表${n[1]}，從描述判斷是誰付的，無法判斷就回傳null）
+}`;
+
   try{
-    const r=await fetch("https://ai-proxy.timelesspaperart003.workers.dev",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:80,
-        messages:[{role:"user",content:`根據消費描述，從以下分類選一個最適合的，只回傳分類名稱，不要其他文字：\n分類：${CATEGORIES.join("、")}\n描述：${desc}`}]})});
-    const d=await r.json(); const t=d.content?.[0]?.text?.trim();
-    return CATEGORIES.includes(t)?t:"💰 其他";
-  }catch{return "💰 其他";}
-}
-async function aiNote(desc){
-  try{
-    const r=await fetch("https://ai-proxy.timelesspaperart003.workers.dev",{method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:40,
-        messages:[{role:"user",content:`為這筆消費寫一個簡短備註（10字以內，中文），只回傳備註：${desc}`}]})});
-    const d=await r.json(); return d.content?.[0]?.text?.trim()||desc;
-  }catch{return desc;}
+    const r=await fetch("https://ai-proxy.timelesspaperart003.workers.dev",{
+      method:"POST",headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:150,
+        messages:[{role:"user",content:prompt}]})
+    });
+    const d=await r.json();
+    const text=d.content?.[0]?.text?.trim()||"{}";
+    const clean=text.replace(/```json|```/g,"").trim();
+    const obj=JSON.parse(clean);
+    return {
+      category: CATEGORIES.includes(obj.category)?obj.category:"💰 其他",
+      note: obj.note||desc,
+      amount: (obj.amount&&!isNaN(+obj.amount))?+obj.amount:null,
+      paidBy: (obj.paidBy===0||obj.paidBy===1)?obj.paidBy:null,
+    };
+  }catch{
+    return {category:"💰 其他",note:desc,amount:null,paidBy:null};
+  }
 }
 
 // ── Derived ───────────────────────────────────────────────────────────────────
@@ -1000,8 +1018,17 @@ function bindAppEvents(){
     document.getElementById("ai-btn").onclick=async()=>{
       if(!form.desc.trim()) return showToast("請先輸入描述");
       aiLoading=true; render();
-      const[cat,note]=await Promise.all([aiClassify(form.desc),aiNote(form.desc)]);
-      form.category=cat; form.note=note; aiLoading=false; render(); showToast("✦ AI 已自動填入");
+      const result=await aiAnalyze(form.desc);
+      form.category=result.category;
+      form.note=result.note;
+      if(result.amount!==null) form.amount=String(result.amount);
+      if(result.paidBy!==null) form.paidBy=result.paidBy;
+      aiLoading=false; render();
+      const filled=[];
+      filled.push("分類、備註");
+      if(result.amount!==null) filled.push("金額");
+      if(result.paidBy!==null) filled.push("付款人");
+      showToast(`✦ AI 已填入：${filled.join("、")}`);
     };
     document.getElementById("btn-submit").onclick=async()=>{
       if(!form.amount||isNaN(+form.amount)) return showToast("請輸入正確金額");
