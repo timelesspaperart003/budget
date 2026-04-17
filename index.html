@@ -161,9 +161,7 @@ input[type=date]::-webkit-calendar-picker-indicator{opacity:.3;}
 .quick-btns{display:flex;gap:8px;margin-bottom:4px;}
 .quick-btn{flex:1;border:1.5px solid var(--border);border-radius:8px;padding:8px 2px;font-size:12px;cursor:pointer;background:var(--surface2);color:var(--sub);transition:all .15s;}
 .quick-btn.active{background:var(--clay);color:var(--surface);border-color:var(--clay);}
-.ai-row{display:flex;gap:8px;margin-bottom:16px;background:var(--surface2);border-radius:10px;padding:10px 12px;border:1px solid var(--border);}
-.ai-input{flex:1;border:none;background:transparent;font-size:13px;outline:none;color:var(--text);}
-.ai-btn{background:var(--clay);border:none;border-radius:7px;padding:6px 12px;color:var(--surface);font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;letter-spacing:.5px;}
+
 
 /* ── Toast ── */
 .toast{position:fixed;bottom:94px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--surface);padding:9px 20px;border-radius:100px;font-size:12px;z-index:999;white-space:nowrap;letter-spacing:.5px;animation:toastIn .3s ease;pointer-events:none;display:none;}
@@ -191,8 +189,10 @@ const fbApp = initializeApp({
 });
 const db=getDatabase(fbApp), auth=getAuth(fbApp);
 
-const CATEGORIES=["🍜 餐飲","🚗 交通","🎬 娛樂","🛒 購物","🏠 居家","✈️ 旅遊","💊 醫療","💰 其他"];
-const CAT_COLORS=["#C4A89A","#9BAF9E","#B89880","#8FA0AE","#AFA3BC","#C8B98A","#A3B4B0","#D4B5AD"];
+const CATEGORIES=["🍽 餐點","🧋 飲料","🚗 交通","🎬 娛樂","🛒 購物","🏠 居家","✈️ 旅遊","💊 醫療","💰 其他"];
+const CAT_COLORS=["#C4A89A","#B8A9E3","#9BAF9E","#B89880","#8FA0AE","#AFA3BC","#C8B98A","#A3B4B0","#D4B5AD"];
+const MEAL_TYPES=["🌅 早餐","☀️ 午餐","🌙 晚餐","🍰 點心"];
+const FOOD_CATS=["🍽 餐點","🧋 飲料"]; // categories that show restaurant field
 const P_COLORS=["var(--rose)","var(--sage)"];
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -212,13 +212,13 @@ let settings={
 let finView="combined"; // "combined" | "individual"
 let calView="combined"; // "combined" | "individual"
 let calMonth={y:new Date().getFullYear(),m:new Date().getMonth()}, calSel=null;
-let aiLoading=false;
+
 let form=freshForm(), budgetDraft="", editKey=null; // editKey: key of record being edited
 let authError="";
 let setupDraft={bookTitle:"我們的帳本",name0:"小美",emoji0:"🌸",name1:"小丑",emoji1:"🤡"};
 let unsubRec, unsubSet;
 
-function freshForm(){ return {date:today(),amount:"",category:CATEGORIES[0],paidBy:myIndex??0,note:"",desc:"",splitEvenly:false}; }
+function freshForm(){ return {date:today(),amount:"",category:CATEGORIES[0],mealType:"",restaurant:"",paidBy:myIndex??0,note:"",splitEvenly:false}; }
 function today(){ return new Date().toISOString().slice(0,10); }
 function thisMonthKey(){ const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`; }
 function genCode(){ return Math.random().toString(36).slice(2,8).toUpperCase(); }
@@ -315,42 +315,7 @@ function leaveRoom(){
   render();
 }
 
-// ── AI ────────────────────────────────────────────────────────────────────────
-// Single call that returns category, note, amount, paidBy all at once
-async function aiAnalyze(desc){
-  const n=names();
-  const prompt=`你是記帳助手，從以下消費描述中抽取資訊，只回傳 JSON，不要其他文字。
 
-描述：「${desc}」
-
-請回傳以下格式：
-{
-  "category": "從這裡選一個最適合的分類：${CATEGORIES.join("、")}",
-  "note": "簡短備註（10字以內中文，精簡描述這筆消費）",
-  "amount": 數字或null（從描述中抽取金額數字，沒有就回傳null）,
-  "paidBy": 數字或null（0代表${n[0]}，1代表${n[1]}，從描述判斷是誰付的，無法判斷就回傳null）
-}`;
-
-  try{
-    const r=await fetch("https://ai-proxy.timelesspaperart003.workers.dev",{
-      method:"POST",headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:150,
-        messages:[{role:"user",content:prompt}]})
-    });
-    const d=await r.json();
-    const text=d.content?.[0]?.text?.trim()||"{}";
-    const clean=text.replace(/```json|```/g,"").trim();
-    const obj=JSON.parse(clean);
-    return {
-      category: CATEGORIES.includes(obj.category)?obj.category:"💰 其他",
-      note: obj.note||desc,
-      amount: (obj.amount&&!isNaN(+obj.amount))?+obj.amount:null,
-      paidBy: (obj.paidBy===0||obj.paidBy===1)?obj.paidBy:null,
-    };
-  }catch{
-    return {category:"💰 其他",note:desc,amount:null,paidBy:null};
-  }
-}
 
 // ── Derived ───────────────────────────────────────────────────────────────────
 function recList(){ return Object.entries(records).map(([k,v])=>({...v,_key:k})).sort((a,b)=>b.date.localeCompare(a.date)); }
@@ -691,7 +656,7 @@ function renderHome(tbp,total,spent,budget,budget0,budget1,budgetPct,budgetLeft,
         <div class="rec-dot" style="background:${CAT_COLORS[CATEGORIES.indexOf(r.category)]||"#C4A89A"}"></div>
         <div style="flex:1">
           <div class="rec-note">${r.note||r.category.replace(/^\S+\s/,"")}</div>
-          <div class="rec-meta">${r.date} · ${r.category.split(" ")[0]} · ${label(r.paidBy)}</div>
+          <div class="rec-meta">${r.date} · ${r.category.split(" ")[0]}${r.mealType?" "+r.mealType.split(" ")[0]:""}${r.restaurant?" · "+r.restaurant:""} · ${label(r.paidBy)}</div>
         </div>
         <div class="rec-amt">NT$ ${r.amount.toLocaleString()}</div>
         <button class="edit-rec-btn" data-key="${r._key}" title="編輯">✎</button>
@@ -800,20 +765,53 @@ function renderStat(tbp,total){
 }
 
 // ── Modals ────────────────────────────────────────────────────────────────────
+function getRestaurantSuggestions(){
+  // collect unique restaurant names from past records
+  const set=new Set();
+  Object.values(records).forEach(r=>{ if(r.restaurant&&r.restaurant.trim()) set.add(r.restaurant.trim()); });
+  return [...set].sort();
+}
+
 function renderAddModal(){
-  const{date,amount,category,note,desc,splitEvenly}=form;
+  const{date,amount,category,mealType,restaurant,note,splitEvenly}=form;
   const paidBy=form.paidBy??myIndex;
-  const half=amount&&!isNaN(+amount)?(+amount/2).toLocaleString():"—";
+  const isFoodCat=FOOD_CATS.includes(category);
+  const isMealCat=category==="🍽 餐點";
+  const suggestions=getRestaurantSuggestions();
+
   return `<div class="overlay" id="overlay"><div class="modal-card">
     <div class="modal-handle"></div><div class="modal-title">新增支出</div>
-    <div class="ai-row"><input class="ai-input" id="ai-desc" placeholder="描述這筆消費（AI 自動分類）" value="${desc}"/><button class="ai-btn" id="ai-btn">${aiLoading?"…":"✦ AI"}</button></div>
+
     <div class="row2">
       <div class="field"><label>日期</label><input type="date" id="f-date" value="${date}"/></div>
       <div class="field"><label>金額（NT$）</label><input type="number" id="f-amount" placeholder="0" value="${amount}"/></div>
     </div>
+
     <div class="field"><label>分類</label><div class="cat-grid">
-      ${CATEGORIES.map((c,i)=>`<button class="cat-chip" data-cat="${c}" style="${category===c?`background:${CAT_COLORS[i]};color:var(--surface);border-color:${CAT_COLORS[i]}`:""}">${c}</button>`).join("")}
+      ${CATEGORIES.map((cat,i)=>`<button class="cat-chip" data-cat="${cat}" style="${category===cat?`background:${CAT_COLORS[i]};color:var(--surface);border-color:${CAT_COLORS[i]}`:""}">${cat}</button>`).join("")}
     </div></div>
+
+    <!-- Meal type sub-category (only for 餐點) -->
+    ${isMealCat?`<div class="field"><label>餐別</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${MEAL_TYPES.map(mt=>`<button class="meal-btn" data-meal="${mt}" style="border:1.5px solid ${mealType===mt?"var(--clay)":"var(--border)"};border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;background:${mealType===mt?"var(--clay)":"var(--surface2)"};color:${mealType===mt?"var(--surface)":"var(--sub)"};transition:all .15s">${mt}</button>`).join("")}
+      </div>
+    </div>`:""}
+
+    <!-- Restaurant (only for 餐點 and 飲料) -->
+    ${isFoodCat?`<div class="field">
+      <label>餐廳／店名 <span style="color:var(--mute);font-weight:400">（選填）</span></label>
+      <div style="position:relative">
+        <input id="f-restaurant" placeholder="輸入店名…" value="${restaurant||""}" autocomplete="off"
+          style="width:100%;border:1.5px solid var(--border);border-radius:9px;padding:9px 12px;font-size:14px;outline:none;color:var(--text);background:var(--surface2);"/>
+        ${suggestions.length>0?`<datalist id="restaurant-list">
+          ${suggestions.map(s=>`<option value="${s}"></option>`).join("")}
+        </datalist>`:""}
+      </div>
+      ${suggestions.length>0?`<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px">
+        ${suggestions.slice(0,6).map(s=>`<button class="rest-suggest" data-rest="${s}" style="border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:11px;cursor:pointer;background:${restaurant===s?"var(--clay)":"var(--surface2)"};color:${restaurant===s?"var(--surface)":"var(--sub)"};transition:all .15s">${s}</button>`).join("")}
+      </div>`:""}
+    </div>`:""}
 
     <!-- Split toggle -->
     <div class="field">
@@ -828,7 +826,6 @@ function renderAddModal(){
       </div>`:""}
     </div>
 
-    <!-- Paid by (hidden when split) -->
     ${!splitEvenly?`<div class="field"><label>誰付錢？</label>
       <div style="display:flex;gap:10px">
         ${names().map((n,i)=>`<button class="paid-btn" data-paid="${i}" style="flex:1;border:1.5px solid ${paidBy===i?(i===0?"var(--rose)":"var(--sage)"):"var(--border)"};border-radius:10px;padding:10px;background:${paidBy===i?(i===0?"var(--rose)":"var(--sage)"):"var(--surface2)"};cursor:pointer;font-size:13px;color:${paidBy===i?"var(--surface)":"var(--sub)"};">${emojis()[i]} ${n}</button>`).join("")}
@@ -842,7 +839,10 @@ function renderAddModal(){
 
 function renderEditModal(){
   const r=records[editKey]; if(!r) return "";
-  const{date,amount,category,paidBy,note}=r;
+  const{date,amount,category,paidBy,note,mealType,restaurant}=r;
+  const isFoodCat=FOOD_CATS.includes(category);
+  const isMealCat=category==="🍽 餐點";
+  const suggestions=getRestaurantSuggestions();
   return `<div class="overlay" id="overlay"><div class="modal-card">
     <div class="modal-handle"></div><div class="modal-title">編輯支出</div>
     <div class="row2">
@@ -850,8 +850,21 @@ function renderEditModal(){
       <div class="field"><label>金額（NT$）</label><input type="number" id="e-amount" value="${amount}"/></div>
     </div>
     <div class="field"><label>分類</label><div class="cat-grid">
-      ${CATEGORIES.map((c,i)=>`<button class="cat-chip e-cat" data-cat="${c}" style="${category===c?`background:${CAT_COLORS[i]};color:var(--surface);border-color:${CAT_COLORS[i]}`:""}">${c}</button>`).join("")}
+      ${CATEGORIES.map((cat,i)=>`<button class="cat-chip e-cat" data-cat="${cat}" style="${category===cat?`background:${CAT_COLORS[i]};color:var(--surface);border-color:${CAT_COLORS[i]}`:""}">${cat}</button>`).join("")}
     </div></div>
+    ${isMealCat?`<div class="field"><label>餐別</label>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${MEAL_TYPES.map(mt=>`<button class="e-meal-btn" data-meal="${mt}" style="border:1.5px solid ${(mealType||"")===mt?"var(--clay)":"var(--border)"};border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;background:${(mealType||"")===mt?"var(--clay)":"var(--surface2)"};color:${(mealType||"")===mt?"var(--surface)":"var(--sub)"};transition:all .15s">${mt}</button>`).join("")}
+      </div>
+    </div>`:""}
+    ${isFoodCat?`<div class="field">
+      <label>餐廳／店名 <span style="color:var(--mute);font-weight:400">（選填）</span></label>
+      <input id="e-restaurant" placeholder="輸入店名…" value="${restaurant||""}"
+        style="width:100%;border:1.5px solid var(--border);border-radius:9px;padding:9px 12px;font-size:14px;outline:none;color:var(--text);background:var(--surface2);"/>
+      ${suggestions.length>0?`<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px">
+        ${suggestions.slice(0,6).map(s=>`<button class="e-rest-suggest" data-rest="${s}" style="border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:11px;cursor:pointer;background:${(restaurant||"")===s?"var(--clay)":"var(--surface2)"};color:${(restaurant||"")===s?"var(--surface)":"var(--sub)"};transition:all .15s">${s}</button>`).join("")}
+      </div>`:""}
+    </div>`:""}
     <div class="field"><label>誰付錢？</label>
       <div style="display:flex;gap:10px">
         ${names().map((n,i)=>`<button class="e-paid-btn" data-paid="${i}" style="flex:1;border:1.5px solid ${paidBy===i?(i===0?"var(--rose)":"var(--sage)"):"var(--border)"};border-radius:10px;padding:10px;background:${paidBy===i?(i===0?"var(--rose)":"var(--sage)"):"var(--surface2)"};cursor:pointer;font-size:13px;color:${paidBy===i?"var(--surface)":"var(--sub)"};">${emojis()[i]} ${n}</button>`).join("")}
@@ -1005,31 +1018,19 @@ function bindAppEvents(){
   if(ov) ov.onclick=e=>{ if(e.target===ov){modal=null;render();} };
 
   if(modal==="add"){
-    const ad=document.getElementById("ai-desc");
-    ad.oninput=()=>{form.desc=ad.value;};
     document.getElementById("f-date").onchange=e=>{form.date=e.target.value;};
     document.getElementById("f-amount").oninput=e=>{form.amount=e.target.value; if(form.splitEvenly) render();};
     document.getElementById("f-note").oninput=e=>{form.note=e.target.value;};
-    document.querySelectorAll(".cat-chip").forEach(b=>{b.onclick=()=>{form.category=b.dataset.cat;render();};});
+    const fRest=document.getElementById("f-restaurant");
+    if(fRest) fRest.oninput=e=>{form.restaurant=e.target.value;};
+    document.querySelectorAll(".cat-chip").forEach(b=>{b.onclick=()=>{form.category=b.dataset.cat;form.mealType="";form.restaurant="";render();};});
+    document.querySelectorAll(".meal-btn").forEach(b=>{b.onclick=()=>{form.mealType=b.dataset.meal;render();};});
+    document.querySelectorAll(".rest-suggest").forEach(b=>{b.onclick=()=>{form.restaurant=b.dataset.rest;render();};});
     document.querySelectorAll(".paid-btn").forEach(b=>{b.onclick=()=>{form.paidBy=+b.dataset.paid;render();};});
     const splitNo=document.getElementById("split-no"), splitYes=document.getElementById("split-yes");
     if(splitNo) splitNo.onclick=()=>{form.splitEvenly=false;render();};
     if(splitYes) splitYes.onclick=()=>{form.splitEvenly=true;render();};
-    document.getElementById("ai-btn").onclick=async()=>{
-      if(!form.desc.trim()) return showToast("請先輸入描述");
-      aiLoading=true; render();
-      const result=await aiAnalyze(form.desc);
-      form.category=result.category;
-      form.note=result.note;
-      if(result.amount!==null) form.amount=String(result.amount);
-      if(result.paidBy!==null) form.paidBy=result.paidBy;
-      aiLoading=false; render();
-      const filled=[];
-      filled.push("分類、備註");
-      if(result.amount!==null) filled.push("金額");
-      if(result.paidBy!==null) filled.push("付款人");
-      showToast(`✦ AI 已填入：${filled.join("、")}`);
-    };
+
     document.getElementById("btn-submit").onclick=async()=>{
       if(!form.amount||isNaN(+form.amount)) return showToast("請輸入正確金額");
       const btn=document.getElementById("btn-submit");
@@ -1040,13 +1041,14 @@ function bindAppEvents(){
         // Write two separate records, one per person, each half the amount
         const half=Math.round(total/2*100)/100;
         const remainder=Math.round((total-half)*100)/100;
+        const mealType=form.mealType||"", restaurant=form.restaurant||"";
         await Promise.all([
-          fbAdd({date,amount:half,category,paidBy:0,note:note||(names()[0]+" 攤分"),splitFrom:true}),
-          fbAdd({date,amount:remainder,category,paidBy:1,note:note||(names()[1]+" 攤分"),splitFrom:true})
+          fbAdd({date,amount:half,category,mealType,restaurant,paidBy:0,note:note||(names()[0]+" 攤分"),splitFrom:true}),
+          fbAdd({date,amount:remainder,category,mealType,restaurant,paidBy:1,note:note||(names()[1]+" 攤分"),splitFrom:true})
         ]);
         showToast(`✦ 已各記 NT$ ${half.toLocaleString()} 和 NT$ ${remainder.toLocaleString()}`);
       } else {
-        await fbAdd({date,amount:total,category,paidBy:form.paidBy??myIndex,note});
+        await fbAdd({date,amount:total,category,mealType:form.mealType||"",restaurant:form.restaurant||"",paidBy:form.paidBy??myIndex,note});
         showToast("✦ 記帳成功");
       }
       modal=null; form=freshForm(); render();
@@ -1093,8 +1095,16 @@ function bindAppEvents(){
   if(modal==="edit"&&editKey&&records[editKey]){
     // local draft for edit — update records[editKey] in place for re-renders
     document.querySelectorAll(".e-cat").forEach(b=>{
-      b.onclick=()=>{ records[editKey]={...records[editKey],category:b.dataset.cat}; render(); };
+      b.onclick=()=>{ records[editKey]={...records[editKey],category:b.dataset.cat,mealType:""}; render(); };
     });
+    document.querySelectorAll(".e-meal-btn").forEach(b=>{
+      b.onclick=()=>{ records[editKey]={...records[editKey],mealType:b.dataset.meal}; render(); };
+    });
+    document.querySelectorAll(".e-rest-suggest").forEach(b=>{
+      b.onclick=()=>{ records[editKey]={...records[editKey],restaurant:b.dataset.rest}; render(); };
+    });
+    const eRest=document.getElementById("e-restaurant");
+    if(eRest) eRest.oninput=e=>{ records[editKey]={...records[editKey],restaurant:e.target.value}; };
     document.querySelectorAll(".e-paid-btn").forEach(b=>{
       b.onclick=()=>{ records[editKey]={...records[editKey],paidBy:+b.dataset.paid}; render(); };
     });
@@ -1102,11 +1112,12 @@ function bindAppEvents(){
       const date=document.getElementById("e-date").value;
       const amount=+document.getElementById("e-amount").value;
       const note=document.getElementById("e-note").value;
+      const restaurant=document.getElementById("e-restaurant")?.value||"";
       if(!amount||isNaN(amount)) return showToast("請輸入正確金額");
       const btn=document.getElementById("btn-edit-save");
       btn.disabled=true; btn.textContent="儲存中…";
-      const{category,paidBy}=records[editKey];
-      await fbUpdate(editKey,{date,amount,category,paidBy,note});
+      const{category,paidBy,mealType}=records[editKey];
+      await fbUpdate(editKey,{date,amount,category,mealType:mealType||"",restaurant,paidBy,note});
       modal=null; editKey=null; render(); showToast("✦ 已更新");
     };
   }
