@@ -11,7 +11,8 @@
 <meta name="apple-mobile-web-app-title" content="我們的帳本"/>
 <meta name="mobile-web-app-capable" content="yes"/>
 <link rel="manifest" href="/manifest.json"/>
-<link rel="apple-touch-icon" href="/icon-192.png"/>
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png"/>
+<link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet"/>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -317,7 +318,7 @@ function leaveRoom(){
 // ── AI ────────────────────────────────────────────────────────────────────────
 async function aiClassify(desc){
   try{
-    const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},
+    const r=await fetch("https://ai-proxy.timelesspaperart003.workers.dev",{method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:80,
         messages:[{role:"user",content:`根據消費描述，從以下分類選一個最適合的，只回傳分類名稱，不要其他文字：\n分類：${CATEGORIES.join("、")}\n描述：${desc}`}]})});
     const d=await r.json(); const t=d.content?.[0]?.text?.trim();
@@ -326,7 +327,7 @@ async function aiClassify(desc){
 }
 async function aiNote(desc){
   try{
-    const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},
+    const r=await fetch("https://ai-proxy.timelesspaperart003.workers.dev",{method:"POST",headers:{"Content-Type":"application/json"},
       body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:40,
         messages:[{role:"user",content:`為這筆消費寫一個簡短備註（10字以內，中文），只回傳備註：${desc}`}]})});
     const d=await r.json(); return d.content?.[0]?.text?.trim()||desc;
