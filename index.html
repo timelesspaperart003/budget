@@ -951,6 +951,15 @@ function renderSettingsModal(){
   return `<div class="overlay" id="overlay"><div class="modal-card">
     <div class="modal-handle"></div><div class="modal-title">⚙ 設定</div>
 
+    <div style="font-size:10px;font-weight:700;color:var(--sub);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">房間資訊</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border-radius:10px;padding:12px 14px;margin-bottom:14px">
+      <div>
+        <div style="font-size:10px;color:var(--mute);margin-bottom:3px">房間碼</div>
+        <div style="font-size:22px;font-weight:800;letter-spacing:4px;color:var(--text)">${roomId}</div>
+      </div>
+      <button id="btn-copy-room" style="background:none;border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:11px;color:var(--sub);cursor:pointer;">複製</button>
+    </div>
+
     <div style="font-size:10px;font-weight:700;color:var(--sub);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">帳本</div>
     <div class="field"><label>帳本名稱</label><input id="set-title" value="${settings.bookTitle||"我們的帳本"}"/></div>
 
@@ -1223,6 +1232,10 @@ function bindAppEvents(){
     ti.onkeydown=e=>{ if(e.key==="Enter") document.getElementById("btn-title-save").click(); };
   }
   if(modal==="settings"){
+    const copyBtn=document.getElementById("btn-copy-room");
+    if(copyBtn) copyBtn.onclick=()=>{
+      navigator.clipboard.writeText(roomId).then(()=>showToast("✦ 房間碼已複製")).catch(()=>showToast("房間碼："+roomId));
+    };
     document.getElementById("btn-settings-save").onclick=async()=>{
       const p={};
       const title=document.getElementById("set-title").value.trim();
