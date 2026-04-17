@@ -820,10 +820,9 @@ function renderAddModal(){
         <button id="split-no" style="flex:1;border:none;cursor:pointer;border-radius:8px;padding:9px 4px;font-size:13px;font-weight:600;transition:all .2s;${!splitEvenly?"background:var(--clay);color:var(--surface)":"background:transparent;color:var(--sub)"}">一人記帳</button>
         <button id="split-yes" style="flex:1;border:none;cursor:pointer;border-radius:8px;padding:9px 4px;font-size:13px;font-weight:600;transition:all .2s;${splitEvenly?"background:var(--clay);color:var(--surface)":"background:transparent;color:var(--sub)"}">平均攤分 ÷2</button>
       </div>
-      ${splitEvenly&&amount?`<div style="display:flex;justify-content:space-between;margin-top:8px;padding:8px 12px;background:var(--surface2);border-radius:8px;font-size:12px;color:var(--sub)">
-        <span>${label(0)}　<b style="color:var(--text)">NT$ ${(+amount/2).toLocaleString(undefined,{maximumFractionDigits:0})}</b></span>
-        <span>${label(1)}　<b style="color:var(--text)">NT$ ${(+amount/2).toLocaleString(undefined,{maximumFractionDigits:0})}</b></span>
-      </div>`:""}
+      <div id="split-preview" style="display:${splitEvenly&&amount?"flex":"none"};justify-content:space-between;margin-top:8px;padding:8px 12px;background:var(--surface2);border-radius:8px;font-size:12px;color:var(--sub)">
+        ${splitEvenly&&amount?`<span>${label(0)}　<b style="color:var(--text)">NT$ ${(+amount/2).toLocaleString(undefined,{maximumFractionDigits:0})}</b></span><span>${label(1)}　<b style="color:var(--text)">NT$ ${(+amount/2).toLocaleString(undefined,{maximumFractionDigits:0})}</b></span>`:""}
+      </div>
     </div>
 
     ${!splitEvenly?`<div class="field"><label>誰付錢？</label>
@@ -1019,7 +1018,18 @@ function bindAppEvents(){
 
   if(modal==="add"){
     document.getElementById("f-date").onchange=e=>{form.date=e.target.value;};
-    document.getElementById("f-amount").oninput=e=>{form.amount=e.target.value; if(form.splitEvenly) render();};
+    document.getElementById("f-amount").oninput=e=>{
+      form.amount=e.target.value;
+      if(form.splitEvenly){
+        // update split preview without full re-render
+        const preview=document.getElementById("split-preview");
+        if(preview&&form.amount&&!isNaN(+form.amount)){
+          const half=(+form.amount/2).toLocaleString(undefined,{maximumFractionDigits:0});
+          preview.innerHTML=`<span>${label(0)}　<b style="color:var(--text)">NT$ ${half}</b></span><span>${label(1)}　<b style="color:var(--text)">NT$ ${half}</b></span>`;
+          preview.style.display="flex";
+        } else if(preview){ preview.style.display="none"; }
+      }
+    };
     document.getElementById("f-note").oninput=e=>{form.note=e.target.value;};
     const fRest=document.getElementById("f-restaurant");
     if(fRest) fRest.oninput=e=>{form.restaurant=e.target.value;};
