@@ -792,14 +792,14 @@ function renderAddModal(){
     </div></div>
 
     <!-- Meal type sub-category (only for 餐點) -->
-    ${isMealCat?`<div class="field"><label>餐別</label>
+    ${isMealCat?`<div class="field" id="meal-section"><label>餐別</label>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         ${MEAL_TYPES.map(mt=>`<button class="meal-btn" data-meal="${mt}" style="border:1.5px solid ${mealType===mt?"var(--clay)":"var(--border)"};border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;background:${mealType===mt?"var(--clay)":"var(--surface2)"};color:${mealType===mt?"var(--surface)":"var(--sub)"};transition:all .15s">${mt}</button>`).join("")}
       </div>
     </div>`:""}
 
     <!-- Restaurant (only for 餐點 and 飲料) -->
-    ${isFoodCat?`<div class="field">
+    ${isFoodCat?`<div class="field" id="restaurant-section">
       <label>餐廳／店名 <span style="color:var(--mute);font-weight:400">（選填）</span></label>
       <div style="position:relative">
         <input id="f-restaurant" placeholder="輸入店名…" value="${restaurant||""}" autocomplete="off"
@@ -825,11 +825,11 @@ function renderAddModal(){
       </div>
     </div>
 
-    ${!splitEvenly?`<div class="field"><label>誰付錢？</label>
+    <div class="field" id="paid-section" style="${splitEvenly?"display:none":""}"><label>誰付錢？</label>
       <div style="display:flex;gap:10px">
         ${names().map((n,i)=>`<button class="paid-btn" data-paid="${i}" style="flex:1;border:1.5px solid ${paidBy===i?(i===0?"var(--rose)":"var(--sage)"):"var(--border)"};border-radius:10px;padding:10px;background:${paidBy===i?(i===0?"var(--rose)":"var(--sage)"):"var(--surface2)"};cursor:pointer;font-size:13px;color:${paidBy===i?"var(--surface)":"var(--sub)"};">${emojis()[i]} ${n}</button>`).join("")}
       </div>
-    </div>`:""}
+    </div>
 
     <div class="field"><label>備註</label><input id="f-note" placeholder="備忘…" value="${note}"/></div>
     <button class="submit-btn" id="btn-submit">${splitEvenly?"各記一半 ÷2":"記帳"}</button>
@@ -1017,11 +1017,17 @@ function bindAppEvents(){
   if(ov) ov.onclick=e=>{ if(e.target===ov){modal=null;render();} };
 
   if(modal==="add"){
+    // ── helper: toggle active style without re-render ──────────────────────
+    function setActive(selector, activeEl, activeStyle, inactiveStyle){
+      document.querySelectorAll(selector).forEach(b=>{
+        Object.assign(b.style, b===activeEl ? activeStyle : inactiveStyle);
+      });
+    }
+
     document.getElementById("f-date").onchange=e=>{form.date=e.target.value;};
     document.getElementById("f-amount").oninput=e=>{
       form.amount=e.target.value;
       if(form.splitEvenly){
-        // update split preview without full re-render
         const preview=document.getElementById("split-preview");
         if(preview&&form.amount&&!isNaN(+form.amount)){
           const half=(+form.amount/2).toLocaleString(undefined,{maximumFractionDigits:0});
@@ -1033,13 +1039,90 @@ function bindAppEvents(){
     document.getElementById("f-note").oninput=e=>{form.note=e.target.value;};
     const fRest=document.getElementById("f-restaurant");
     if(fRest) fRest.oninput=e=>{form.restaurant=e.target.value;};
-    document.querySelectorAll(".cat-chip").forEach(b=>{b.onclick=()=>{form.category=b.dataset.cat;form.mealType="";form.restaurant="";render();};});
-    document.querySelectorAll(".meal-btn").forEach(b=>{b.onclick=()=>{form.mealType=b.dataset.meal;render();};});
-    document.querySelectorAll(".rest-suggest").forEach(b=>{b.onclick=()=>{form.restaurant=b.dataset.rest;render();};});
-    document.querySelectorAll(".paid-btn").forEach(b=>{b.onclick=()=>{form.paidBy=+b.dataset.paid;render();};});
+
+    // Category chips — needs re-render only because sub-fields (meal/restaurant) may appear/disappear
+    document.querySelectorAll(".cat-chip").forEach((b,_,all)=>{
+      b.onclick=()=>{
+        const i=CATEGORIES.indexOf(b.dataset.cat);
+        form.category=b.dataset.cat; form.mealType=""; form.restaurant="";
+        all.forEach((x,xi)=>{
+          const active=x.dataset.cat===form.category;
+          x.style.background=active?CAT_COLORS[xi]:"var(--surface2)";
+          x.style.color=active?"var(--surface)":"var(--sub)";
+          x.style.borderColor=active?CAT_COLORS[xi]:"var(--border)";
+        });
+        // show/hide meal-type and restaurant sections without full re-render
+        const mealSec=document.getElementById("meal-section");
+        const restSec=document.getElementById("restaurant-section");
+        const isMeal=form.category==="🍽 餐點";
+        const isFood=["🍽 餐點","🧋 飲料"].includes(form.category);
+        if(mealSec) mealSec.style.display=isMeal?"block":"none";
+        if(restSec) restSec.style.display=isFood?"block":"none";
+      };
+    });
+
+    // Meal type buttons
+    document.querySelectorAll(".meal-btn").forEach(b=>{
+      b.onclick=()=>{
+        form.mealType=b.dataset.meal;
+        document.querySelectorAll(".meal-btn").forEach(x=>{
+          const active=x.dataset.meal===form.mealType;
+          x.style.background=active?"var(--clay)":"var(--surface2)";
+          x.style.color=active?"var(--surface)":"var(--sub)";
+          x.style.borderColor=active?"var(--clay)":"var(--border)";
+        });
+      };
+    });
+
+    // Restaurant suggestions
+    document.querySelectorAll(".rest-suggest").forEach(b=>{
+      b.onclick=()=>{
+        form.restaurant=b.dataset.rest;
+        const inp=document.getElementById("f-restaurant");
+        if(inp) inp.value=form.restaurant;
+        document.querySelectorAll(".rest-suggest").forEach(x=>{
+          const active=x.dataset.rest===form.restaurant;
+          x.style.background=active?"var(--clay)":"var(--surface2)";
+          x.style.color=active?"var(--surface)":"var(--sub)";
+          x.style.borderColor=active?"var(--clay)":"var(--border)";
+        });
+      };
+    });
+
+    // Paid-by buttons
+    document.querySelectorAll(".paid-btn").forEach(b=>{
+      b.onclick=()=>{
+        form.paidBy=+b.dataset.paid;
+        document.querySelectorAll(".paid-btn").forEach((x,xi)=>{
+          const active=+x.dataset.paid===form.paidBy;
+          const color=xi===0?"var(--rose)":"var(--sage)";
+          x.style.background=active?color:"var(--surface2)";
+          x.style.color=active?"var(--surface)":"var(--sub)";
+          x.style.borderColor=active?color:"var(--border)";
+        });
+      };
+    });
+
+    // Split toggle
     const splitNo=document.getElementById("split-no"), splitYes=document.getElementById("split-yes");
-    if(splitNo) splitNo.onclick=()=>{form.splitEvenly=false;render();};
-    if(splitYes) splitYes.onclick=()=>{form.splitEvenly=true;render();};
+    const paidSection=document.getElementById("paid-section");
+    function updateSplitUI(){
+      if(splitNo){ splitNo.style.background=!form.splitEvenly?"var(--clay)":"transparent"; splitNo.style.color=!form.splitEvenly?"var(--surface)":"var(--sub)"; }
+      if(splitYes){ splitYes.style.background=form.splitEvenly?"var(--clay)":"transparent"; splitYes.style.color=form.splitEvenly?"var(--surface)":"var(--sub)"; }
+      if(paidSection) paidSection.style.display=form.splitEvenly?"none":"block";
+      const submitBtn=document.getElementById("btn-submit");
+      if(submitBtn) submitBtn.textContent=form.splitEvenly?"各記一半 ÷2":"記帳";
+      const preview=document.getElementById("split-preview");
+      if(preview){
+        if(form.splitEvenly&&form.amount&&!isNaN(+form.amount)){
+          const half=(+form.amount/2).toLocaleString(undefined,{maximumFractionDigits:0});
+          preview.innerHTML=`<span>${label(0)}　<b style="color:var(--text)">NT$ ${half}</b></span><span>${label(1)}　<b style="color:var(--text)">NT$ ${half}</b></span>`;
+          preview.style.display="flex";
+        } else { preview.style.display="none"; }
+      }
+    }
+    if(splitNo) splitNo.onclick=()=>{form.splitEvenly=false; updateSplitUI();};
+    if(splitYes) splitYes.onclick=()=>{form.splitEvenly=true; updateSplitUI();};
 
     document.getElementById("btn-submit").onclick=async()=>{
       if(!form.amount||isNaN(+form.amount)) return showToast("請輸入正確金額");
