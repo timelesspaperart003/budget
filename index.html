@@ -203,11 +203,16 @@ let myIndex=null;          // 0 or 1 — picked each session
 let screen="loading";
 let tab="home", records={}, syncing=false, modal=null;
 let settings={
+  mode:"couple",          // "personal" | "couple" | "family"
+  memberCount:2,          // 1–8
   budget:10000,budget0:5000,budget1:5000,
   salary0:30000,salary1:30000,
   savingsGoal0:8000,savingsGoal1:7000,
   lastSaved0:0,lastSaved1:0,
-  bookTitle:"我們的帳本",names:["小美","小丑"],nameEmojis:["🌸","🤡"]
+  bookTitle:"我們的帳本",names:["小美","小丑"],nameEmojis:["🌸","🤡"],
+  payMethods:[],          // user-defined payment methods [{id,name}]
+  showPayMethod:true,     // show payment method field
+  catBudgets:{}           // {"🍽 餐點-0":4000, "🍽 餐點-1":4000, ...}
 };
 let finView="combined"; // "combined" | "individual"
 let calView="combined"; // "combined" | "individual"
@@ -218,13 +223,15 @@ let authError="";
 let setupDraft={bookTitle:"我們的帳本",name0:"小美",emoji0:"🌸",name1:"小丑",emoji1:"🤡"};
 let unsubRec, unsubSet;
 
-function freshForm(){ return {date:today(),amount:"",category:CATEGORIES[0],mealType:"",restaurant:"",paidBy:myIndex??0,note:"",splitEvenly:false}; }
+function freshForm(){ return {date:today(),amount:"",category:CATEGORIES[0],mealType:"",restaurant:"",payMethodId:"",paidBy:myIndex??0,note:"",splitEvenly:false}; }
 function today(){ return new Date().toISOString().slice(0,10); }
 function thisMonthKey(){ const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`; }
 function genCode(){ return Math.random().toString(36).slice(2,8).toUpperCase(); }
-function names(){ return settings.names||["小美","小丑"]; }
-function emojis(){ return settings.nameEmojis||["🌸","🤡"]; }
-function label(i){ return `${emojis()[i]} ${names()[i]}`; }
+function memberCount(){ return Math.max(1, settings.memberCount||2); }
+function names(){ const n=settings.names||["小美","小丑"]; return n.slice(0,memberCount()); }
+function emojis(){ const e=settings.nameEmojis||["🌸","🤡"]; return e.slice(0,memberCount()); }
+function label(i){ return `${(emojis()[i]||"👤")} ${(names()[i]||"成員"+(i+1))}`; }
+function payMethods(){ return settings.payMethods||[]; }
 
 async function hashPw(pw){
   const buf=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(pw));
@@ -286,11 +293,21 @@ async function joinRoom(code,pw){
 async function finishSetup(){
   const btn=document.getElementById("btn-setup-done");
   if(btn){btn.disabled=true;btn.textContent="儲存中…";}
+  const count=setupDraftMode==="personal"?1:setupDraftMode==="couple"?2:setupDraftCount;
+  const ns=[],es=[];
+  for(let i=0;i<count;i++){
+    ns.push(setupDraft["name"+i]||DEFAULT_NAMES[i]);
+    es.push(setupDraft["emoji"+i]||DEFAULT_EMOJIS[i]);
+  }
+  // Ensure budget arrays are sized correctly
+  const budgets=Array.from({length:count},(_,i)=>5000);
   const patch={
+    mode:setupDraftMode, memberCount:count,
     bookTitle:setupDraft.bookTitle||"我們的帳本",
-    names:[setupDraft.name0||"小美",setupDraft.name1||"小丑"],
-    nameEmojis:[setupDraft.emoji0||"🌸",setupDraft.emoji1||"🤡"]
+    names:ns, nameEmojis:es,
+    payMethods:[], showPayMethod:true, catBudgets:{}
   };
+  for(let i=0;i<count;i++){ patch["budget"+i]=budgets[i]; patch["salary"+i]=30000; patch["savingsGoal"+i]=8000; patch["lastSaved"+i]=0; }
   await fbSave(patch);
   screen="identity";
   render();
@@ -308,10 +325,11 @@ function leaveRoom(){
   if(unsubRec) unsubRec();
   if(unsubSet) unsubSet();
   roomId=null; myIndex=null; screen="login"; authError="";
-  records={}; settings={budget:10000,budget0:5000,budget1:5000,
+  records={}; settings={mode:"couple",memberCount:2,budget:10000,budget0:5000,budget1:5000,
     salary0:30000,salary1:30000,
     savingsGoal0:8000,savingsGoal1:7000,lastSaved0:0,lastSaved1:0,
-    bookTitle:"我們的帳本",names:["小美","小丑"],nameEmojis:["🌸","🤡"]};
+    bookTitle:"我們的帳本",names:["小美","小丑"],nameEmojis:["🌸","🤡"],
+    payMethods:[],showPayMethod:true,catBudgets:{}};
   render();
 }
 
@@ -394,31 +412,47 @@ function bindLoginEvents(){
 }
 
 // ── Setup (new room) ──────────────────────────────────────────────────────────
+let setupDraftMode="couple", setupDraftCount=2;
+const MODE_LABELS={personal:"個人",couple:"情侶",family:"家庭"};
+const DEFAULT_EMOJIS=["🌸","🤡","🦁","🐻","🌿","🌊","🎸","⭐"];
+const DEFAULT_NAMES=["小美","小丑","成員3","成員4","成員5","成員6","成員7","成員8"];
+
 function renderSetup(){
   const d=setupDraft;
+  const count=setupDraftCount;
+  const memberInputs=Array.from({length:count},(_,i)=>`
+    <div class="auth-card" style="width:100%;margin-bottom:8px">
+      <div class="auth-card-title">第 ${i+1} 位</div>
+      <div style="display:flex;gap:8px">
+        <input class="auth-input s-emoji" data-idx="${i}" placeholder="${DEFAULT_EMOJIS[i]}" value="${d["emoji"+i]||DEFAULT_EMOJIS[i]}" style="width:60px;text-align:center;font-size:22px;flex-shrink:0;margin-bottom:0"/>
+        <input class="auth-input s-name" data-idx="${i}" placeholder="${DEFAULT_NAMES[i]}" value="${d["name"+i]||DEFAULT_NAMES[i]}" style="flex:1;margin-bottom:0"/>
+      </div>
+    </div>`).join("");
   return `
-  <div class="auth-screen" style="justify-content:flex-start;padding-top:40px;overflow-y:auto">
+  <div class="auth-screen" style="justify-content:flex-start;padding-top:32px;overflow-y:auto">
     <div class="auth-emoji">✏️</div>
     <div class="auth-title">設定帳本</div>
-    <div class="auth-sub">幫帳本取個名字，並告訴我你們叫什麼</div>
+    <div class="auth-sub" style="margin-bottom:16px">選擇記帳模式並設定成員</div>
+
+    <div class="auth-card" style="width:100%">
+      <div class="auth-card-title">記帳模式</div>
+      <div style="display:flex;gap:6px;margin-bottom:${setupDraftMode==="family"?"10px":"0"}">
+        ${["personal","couple","family"].map(m=>`<button class="setup-mode-btn" data-mode="${m}" style="flex:1;border:1.5px solid ${setupDraftMode===m?"var(--clay)":"var(--border)"};border-radius:10px;padding:10px 4px;font-size:13px;font-weight:600;cursor:pointer;background:${setupDraftMode===m?"var(--clay)":"var(--surface2)"};color:${setupDraftMode===m?"var(--surface)":"var(--sub)"};transition:all .2s">${m==="personal"?"👤 個人":m==="couple"?"💑 情侶":"👨‍👩‍👧 家庭"}</button>`).join("")}
+      </div>
+      ${setupDraftMode==="family"?`<div style="margin-top:10px">
+        <div style="font-size:11px;color:var(--sub);margin-bottom:6px">家庭人數</div>
+        <div style="display:flex;gap:6px">
+          ${[2,3,4,5,6,7,8].map(n=>`<button class="setup-count-btn" data-count="${n}" style="flex:1;border:1.5px solid ${setupDraftCount===n?"var(--clay)":"var(--border)"};border-radius:8px;padding:7px 2px;font-size:13px;font-weight:600;cursor:pointer;background:${setupDraftCount===n?"var(--clay)":"var(--surface2)"};color:${setupDraftCount===n?"var(--surface)":"var(--sub)"}">${n}</button>`).join("")}
+        </div>
+      </div>`:""}
+    </div>
+
     <div class="auth-card" style="width:100%">
       <div class="auth-card-title">帳本名稱</div>
-      <input class="auth-input" id="s-title" placeholder="我們的帳本" value="${d.bookTitle}" style="margin-bottom:0"/>
+      <input class="auth-input" id="s-title" placeholder="我們的帳本" value="${d.bookTitle||"我們的帳本"}" style="margin-bottom:0"/>
     </div>
-    <div class="auth-card" style="width:100%">
-      <div class="auth-card-title">第一位</div>
-      <div style="display:flex;gap:8px">
-        <input class="auth-input" id="s-e0" placeholder="🌸" value="${d.emoji0}" style="width:60px;text-align:center;font-size:22px;flex-shrink:0;margin-bottom:0"/>
-        <input class="auth-input" id="s-n0" placeholder="小美" value="${d.name0}" style="flex:1;margin-bottom:0"/>
-      </div>
-    </div>
-    <div class="auth-card" style="width:100%">
-      <div class="auth-card-title">第二位</div>
-      <div style="display:flex;gap:8px">
-        <input class="auth-input" id="s-e1" placeholder="🤡" value="${d.emoji1}" style="width:60px;text-align:center;font-size:22px;flex-shrink:0;margin-bottom:0"/>
-        <input class="auth-input" id="s-n1" placeholder="小丑" value="${d.name1}" style="flex:1;margin-bottom:0"/>
-      </div>
-    </div>
+
+    ${memberInputs}
     <button class="auth-btn" id="btn-setup-done" style="width:100%;margin-top:4px">完成，進入帳本 →</button>
     <div class="hint" style="text-align:center;margin-top:6px">這些都可以在帳本裡隨時修改</div>
   </div>`;
@@ -426,40 +460,52 @@ function renderSetup(){
 
 function bindSetupEvents(){
   document.getElementById("s-title").oninput=e=>{setupDraft.bookTitle=e.target.value;};
-  document.getElementById("s-e0").oninput=e=>{setupDraft.emoji0=e.target.value;};
-  document.getElementById("s-n0").oninput=e=>{setupDraft.name0=e.target.value;};
-  document.getElementById("s-e1").oninput=e=>{setupDraft.emoji1=e.target.value;};
-  document.getElementById("s-n1").oninput=e=>{setupDraft.name1=e.target.value;};
+  document.querySelectorAll(".s-emoji").forEach(el=>{
+    el.oninput=e=>{setupDraft["emoji"+e.target.dataset.idx]=e.target.value;};
+  });
+  document.querySelectorAll(".s-name").forEach(el=>{
+    el.oninput=e=>{setupDraft["name"+e.target.dataset.idx]=e.target.value;};
+  });
+  document.querySelectorAll(".setup-mode-btn").forEach(b=>{
+    b.onclick=()=>{
+      setupDraftMode=b.dataset.mode;
+      setupDraftCount=setupDraftMode==="personal"?1:setupDraftMode==="couple"?2:setupDraftCount;
+      render();
+    };
+  });
+  document.querySelectorAll(".setup-count-btn").forEach(b=>{
+    b.onclick=()=>{ setupDraftCount=+b.dataset.count; render(); };
+  });
   document.getElementById("btn-setup-done").onclick=finishSetup;
 }
 
 // ── Identity picker ───────────────────────────────────────────────────────────
 function renderIdentity(){
   const n=names(),e=emojis(),title=settings.bookTitle||"我們的帳本";
+  const count=memberCount();
+  const gridCols=count<=2?"1fr 1fr":count<=4?"1fr 1fr":"1fr 1fr 1fr";
   return `
   <div class="auth-screen">
     <div style="font-size:13px;color:var(--mute);margin-bottom:6px;letter-spacing:1px;text-transform:uppercase">${title}</div>
     <div class="auth-title" style="font-size:22px">今天你是誰？</div>
     <div class="auth-sub">選擇你的身份進入帳本</div>
-    <div class="identity-grid">
-      <div class="identity-card" id="pick-0">
-        <div class="identity-emoji">${e[0]}</div>
-        <div class="identity-name">${n[0]}</div>
+    <div style="display:grid;grid-template-columns:${gridCols};gap:14px;width:100%;margin-top:4px">
+      ${Array.from({length:count},(_,i)=>`
+      <div class="identity-card" id="pick-${i}">
+        <div class="identity-emoji">${e[i]||"👤"}</div>
+        <div class="identity-name">${n[i]||"成員"+(i+1)}</div>
         <div class="identity-room">房間 ${roomId}</div>
-      </div>
-      <div class="identity-card" id="pick-1">
-        <div class="identity-emoji">${e[1]}</div>
-        <div class="identity-name">${n[1]}</div>
-        <div class="identity-room">房間 ${roomId}</div>
-      </div>
+      </div>`).join("")}
     </div>
     <button style="margin-top:20px;background:none;border:none;font-size:12px;color:var(--mute);cursor:pointer;text-decoration:underline;" id="btn-back-login">← 換個房間</button>
   </div>`;
 }
 
 function bindIdentityEvents(){
-  document.getElementById("pick-0").onclick=()=>pickIdentity(0);
-  document.getElementById("pick-1").onclick=()=>pickIdentity(1);
+  Array.from({length:memberCount()},(_,i)=>{
+    const el=document.getElementById("pick-"+i);
+    if(el) el.onclick=()=>pickIdentity(i);
+  });
   document.getElementById("btn-back-login").onclick=()=>{ if(unsubRec)unsubRec();if(unsubSet)unsubSet();roomId=null;screen="login";authError="";render(); };
 }
 
@@ -509,13 +555,15 @@ function renderApp(){
       <button class="nav-btn ${tab===k?"active":""}" data-tab="${k}"><span class="nav-icon">${ic}</span>${lb}</button>`).join("")}
   </nav>
 
-  ${modal==="add"      ? renderAddModal()      : ""}
-  ${modal==="edit"     ? renderEditModal()     : ""}
-  ${modal==="budget"   ? renderBudgetModal()   : ""}
-  ${modal==="finance"  ? renderFinModal()      : ""}
-  ${modal==="names"    ? renderNamesModal()    : ""}
-  ${modal==="title"    ? renderTitleModal()    : ""}
-  ${modal==="settings" ? renderSettingsModal() : ""}
+  ${modal==="add"        ? renderAddModal()        : ""}
+  ${modal==="edit"       ? renderEditModal()       : ""}
+  ${modal==="budget"     ? renderBudgetModal()     : ""}
+  ${modal==="catbudget"  ? renderCatBudgetModal()  : ""}
+  ${modal==="finance"    ? renderFinModal()        : ""}
+  ${modal==="names"      ? renderNamesModal()      : ""}
+  ${modal==="title"      ? renderTitleModal()      : ""}
+  ${modal==="paymethods" ? renderPayMethodsModal() : ""}
+  ${modal==="settings"   ? renderSettingsModal()   : ""}
   `;
 }
 
@@ -831,6 +879,12 @@ function renderAddModal(){
       </div>
     </div>
 
+    ${settings.showPayMethod&&payMethods().length>0?`<div class="field">
+      <label>付款方式 <span style="color:var(--mute);font-weight:400">（選填）</span></label>
+      <div style="display:flex;flex-wrap:wrap;gap:6px">
+        ${payMethods().map(pm=>`<button class="pm-chip" data-pmid="${pm.id}" style="border:1.5px solid ${form.payMethodId===pm.id?"var(--clay)":"var(--border)"};border-radius:20px;padding:5px 12px;font-size:12px;cursor:pointer;background:${form.payMethodId===pm.id?"var(--clay)":"var(--surface2)"};color:${form.payMethodId===pm.id?"var(--surface)":"var(--sub)"};transition:all .15s">${pm.name}</button>`).join("")}
+      </div>
+    </div>`:""}
     <div class="field"><label>備註</label><input id="f-note" placeholder="備忘…" value="${note}"/></div>
     <button class="submit-btn" id="btn-submit">${splitEvenly?"各記一半 ÷2":"記帳"}</button>
   </div></div>`;
@@ -938,6 +992,58 @@ function renderNamesModal(){
   </div></div>`;
 }
 
+function renderPayMethodsModal(){
+  const pms=payMethods();
+  return `<div class="overlay" id="overlay"><div class="modal-card">
+    <div class="modal-handle"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div class="modal-title" style="margin-bottom:0">付款方式管理</div>
+    </div>
+    ${pms.length===0?`<div class="empty" style="padding:12px 0">還沒有付款方式，新增一個吧！</div>`:""}
+    ${pms.map(pm=>`
+      <div style="display:flex;align-items:center;gap:10px;padding:9px 6px;border-bottom:1px solid var(--surface2)">
+        <span style="flex:1;font-size:14px">${pm.name}</span>
+        <button class="pm-del-btn" data-pmid="${pm.id}" style="background:none;border:none;cursor:pointer;font-size:16px;color:var(--mute)">×</button>
+      </div>`).join("")}
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <input id="pm-new-name" placeholder="例：中信8778信用卡" style="flex:1;border:1.5px solid var(--border);border-radius:9px;padding:9px 12px;font-size:14px;outline:none;color:var(--text);background:var(--surface2)"/>
+      <button id="pm-add-btn" style="background:var(--clay);border:none;border-radius:9px;padding:9px 14px;color:var(--surface);font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">＋ 新增</button>
+    </div>
+    <div style="margin-top:14px">
+      <label style="font-size:10px;color:var(--sub);font-weight:700;letter-spacing:1px;text-transform:uppercase;display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="pm-show-toggle" ${settings.showPayMethod?"checked":""} style="width:16px;height:16px;accent-color:var(--clay)"/>
+        記帳時顯示付款方式選擇
+      </label>
+    </div>
+  </div></div>`;
+}
+
+function renderCatBudgetModal(){
+  const n=names(),e=emojis(),count=memberCount();
+  const cb=settings.catBudgets||{};
+  return `<div class="overlay" id="overlay"><div class="modal-card">
+    <div class="modal-handle"></div><div class="modal-title">分類預算設定</div>
+    <div class="hint" style="margin-bottom:12px">為每個分類和每個人設定月預算，留空表示不限制</div>
+    <div style="overflow-y:auto;max-height:60vh">
+      ${CATEGORIES.map((cat,ci)=>`
+        <div style="margin-bottom:14px">
+          <div style="font-size:12px;font-weight:700;color:var(--sub);margin-bottom:6px">${cat}</div>
+          <div style="display:grid;grid-template-columns:${count===1?"1fr":count===2?"1fr 1fr":"1fr 1fr 1fr"};gap:8px">
+            ${Array.from({length:count},(_,pi)=>{
+              const key=cat+"-"+pi;
+              return `<div>
+                <div style="font-size:10px;color:var(--mute);margin-bottom:3px">${e[pi]||"👤"} ${n[pi]||"成員"+(pi+1)}</div>
+                <input class="catbud-input" data-key="${key}" type="number" placeholder="不限" value="${cb[key]||""}"
+                  style="width:100%;border:1.5px solid var(--border);border-radius:8px;padding:7px 10px;font-size:13px;outline:none;background:var(--surface2);color:var(--text)"/>
+              </div>`;
+            }).join("")}
+          </div>
+        </div>`).join("")}
+    </div>
+    <button class="submit-btn" id="btn-catbud-save" style="margin-top:8px">儲存</button>
+  </div></div>`;
+}
+
 function renderTitleModal(){
   return `<div class="overlay" id="overlay"><div class="modal-card" style="max-height:44vh">
     <div class="modal-handle"></div><div class="modal-title">修改帳本名稱</div>
@@ -951,6 +1057,20 @@ function renderSettingsModal(){
   return `<div class="overlay" id="overlay"><div class="modal-card">
     <div class="modal-handle"></div><div class="modal-title">⚙ 設定</div>
 
+    <div style="font-size:10px;font-weight:700;color:var(--sub);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">記帳模式</div>
+    <div style="display:flex;gap:6px;margin-bottom:14px">
+      ${["personal","couple","family"].map(m=>`<button class="set-mode-btn" data-mode="${m}" style="flex:1;border:1.5px solid ${(settings.mode||"couple")===m?"var(--clay)":"var(--border)"};border-radius:10px;padding:9px 4px;font-size:12px;font-weight:600;cursor:pointer;background:${(settings.mode||"couple")===m?"var(--clay)":"var(--surface2)"};color:${(settings.mode||"couple")===m?"var(--surface)":"var(--sub)"};transition:all .2s">${m==="personal"?"👤 個人":m==="couple"?"💑 情侶":"👨‍👩‍👧 家庭"}</button>`).join("")}
+    </div>
+    ${(settings.mode==="family")?`<div style="margin-bottom:14px">
+      <div style="font-size:10px;color:var(--sub);margin-bottom:6px;font-weight:700;letter-spacing:1px;text-transform:uppercase">家庭人數</div>
+      <div style="display:flex;gap:6px">
+        ${[2,3,4,5,6,7,8].map(n=>`<button class="set-count-btn" data-count="${n}" style="flex:1;border:1.5px solid ${(settings.memberCount||2)===n?"var(--clay)":"var(--border)"};border-radius:8px;padding:7px 2px;font-size:13px;font-weight:600;cursor:pointer;background:${(settings.memberCount||2)===n?"var(--clay)":"var(--surface2)"};color:${(settings.memberCount||2)===n?"var(--surface)":"var(--sub)"}">${n}</button>`).join("")}
+      </div>
+    </div>`:""}
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button id="btn-open-paymethods" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;font-size:13px;cursor:pointer;color:var(--sub)">💳 管理付款方式（${payMethods().length} 個）</button>
+      <button id="btn-open-catbudget" style="flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px;font-size:13px;cursor:pointer;color:var(--sub)">📊 分類預算設定</button>
+    </div>
     <div style="font-size:10px;font-weight:700;color:var(--sub);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">房間資訊</div>
     <div style="display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border-radius:10px;padding:12px 14px;margin-bottom:14px">
       <div>
@@ -1097,6 +1217,18 @@ function bindAppEvents(){
         });
       };
     });
+    // Payment method chips
+    document.querySelectorAll(".pm-chip").forEach(b=>{
+      b.onclick=()=>{
+        form.payMethodId=form.payMethodId===b.dataset.pmid?"":b.dataset.pmid;
+        document.querySelectorAll(".pm-chip").forEach(x=>{
+          const active=x.dataset.pmid===form.payMethodId;
+          x.style.background=active?"var(--clay)":"var(--surface2)";
+          x.style.color=active?"var(--surface)":"var(--sub)";
+          x.style.borderColor=active?"var(--clay)":"var(--border)";
+        });
+      };
+    });
 
     // Paid-by buttons
     document.querySelectorAll(".paid-btn").forEach(b=>{
@@ -1143,14 +1275,14 @@ function bindAppEvents(){
         // Write two separate records, one per person, each half the amount
         const half=Math.round(total/2*100)/100;
         const remainder=Math.round((total-half)*100)/100;
-        const mealType=form.mealType||"", restaurant=form.restaurant||"";
+        const mealType=form.mealType||"", restaurant=form.restaurant||"", payMethodId=form.payMethodId||"";
         await Promise.all([
-          fbAdd({date,amount:half,category,mealType,restaurant,paidBy:0,note:note||(names()[0]+" 攤分"),splitFrom:true}),
-          fbAdd({date,amount:remainder,category,mealType,restaurant,paidBy:1,note:note||(names()[1]+" 攤分"),splitFrom:true})
+          fbAdd({date,amount:half,category,mealType,restaurant,payMethodId,paidBy:0,note:note||(names()[0]+" 攤分"),splitFrom:true}),
+          fbAdd({date,amount:remainder,category,mealType,restaurant,payMethodId,paidBy:1,note:note||(names()[1]+" 攤分"),splitFrom:true})
         ]);
         showToast(`✦ 已各記 NT$ ${half.toLocaleString()} 和 NT$ ${remainder.toLocaleString()}`);
       } else {
-        await fbAdd({date,amount:total,category,mealType:form.mealType||"",restaurant:form.restaurant||"",paidBy:form.paidBy??myIndex,note});
+        await fbAdd({date,amount:total,category,mealType:form.mealType||"",restaurant:form.restaurant||"",payMethodId:form.payMethodId||"",paidBy:form.paidBy??myIndex,note});
         showToast("✦ 記帳成功");
       }
       modal=null; form=freshForm(); render();
@@ -1231,11 +1363,56 @@ function bindAppEvents(){
     };
     ti.onkeydown=e=>{ if(e.key==="Enter") document.getElementById("btn-title-save").click(); };
   }
+  if(modal==="paymethods"){
+    document.querySelectorAll(".pm-del-btn").forEach(b=>{
+      b.onclick=async()=>{
+        const newPMs=payMethods().filter(p=>p.id!==b.dataset.pmid);
+        await fbSave({payMethods:newPMs}); render();
+      };
+    });
+    const pmAdd=document.getElementById("pm-add-btn");
+    if(pmAdd) pmAdd.onclick=async()=>{
+      const inp=document.getElementById("pm-new-name");
+      const name=(inp?.value||"").trim();
+      if(!name) return showToast("請輸入付款方式名稱");
+      const newPMs=[...payMethods(),{id:Date.now().toString(),name}];
+      await fbSave({payMethods:newPMs}); render(); showToast("✦ 已新增");
+    };
+    const pmToggle=document.getElementById("pm-show-toggle");
+    if(pmToggle) pmToggle.onchange=async()=>{ await fbSave({showPayMethod:pmToggle.checked}); };
+    const pmNameInp=document.getElementById("pm-new-name");
+    if(pmNameInp) pmNameInp.onkeydown=e=>{ if(e.key==="Enter") document.getElementById("pm-add-btn")?.click(); };
+  }
+  if(modal==="catbudget"){
+    document.getElementById("btn-catbud-save").onclick=async()=>{
+      const cb={};
+      document.querySelectorAll(".catbud-input").forEach(inp=>{
+        if(inp.value&&+inp.value>0) cb[inp.dataset.key]=+inp.value;
+      });
+      await fbSave({catBudgets:cb}); modal=null; render(); showToast("✦ 分類預算已儲存");
+    };
+  }
   if(modal==="settings"){
     const copyBtn=document.getElementById("btn-copy-room");
     if(copyBtn) copyBtn.onclick=()=>{
       navigator.clipboard.writeText(roomId).then(()=>showToast("✦ 房間碼已複製")).catch(()=>showToast("房間碼："+roomId));
     };
+    const btnPM=document.getElementById("btn-open-paymethods");
+    if(btnPM) btnPM.onclick=()=>{modal="paymethods";render();};
+    const btnCB=document.getElementById("btn-open-catbudget");
+    if(btnCB) btnCB.onclick=()=>{modal="catbudget";render();};
+    // Mode selector inside settings
+    document.querySelectorAll(".set-mode-btn").forEach(b=>{
+      b.onclick=async()=>{
+        const newMode=b.dataset.mode;
+        const newCount=newMode==="personal"?1:newMode==="couple"?2:(settings.memberCount||2);
+        await fbSave({mode:newMode,memberCount:newCount});
+        render();
+      };
+    });
+    document.querySelectorAll(".set-count-btn").forEach(b=>{
+      b.onclick=async()=>{ await fbSave({memberCount:+b.dataset.count}); render(); };
+    });
     document.getElementById("btn-settings-save").onclick=async()=>{
       const p={};
       const title=document.getElementById("set-title").value.trim();
