@@ -555,15 +555,16 @@ function renderApp(){
       <button class="nav-btn ${tab===k?"active":""}" data-tab="${k}"><span class="nav-icon">${ic}</span>${lb}</button>`).join("")}
   </nav>
 
-  ${modal==="add"        ? renderAddModal()        : ""}
-  ${modal==="edit"       ? renderEditModal()       : ""}
-  ${modal==="budget"     ? renderBudgetModal()     : ""}
-  ${modal==="catbudget"  ? renderCatBudgetModal()  : ""}
-  ${modal==="finance"    ? renderFinModal()        : ""}
-  ${modal==="names"      ? renderNamesModal()      : ""}
-  ${modal==="title"      ? renderTitleModal()      : ""}
-  ${modal==="paymethods" ? renderPayMethodsModal() : ""}
-  ${modal==="settings"   ? renderSettingsModal()   : ""}
+  ${modal==="add"          ? renderAddModal()          : ""}
+  ${modal==="edit"         ? renderEditModal()         : ""}
+  ${modal==="budget"       ? renderBudgetModal()       : ""}
+  ${modal==="catbudget"    ? renderCatBudgetModal()    : ""}
+  ${modal==="finance"      ? renderFinModal()          : ""}
+  ${modal==="names"        ? renderNamesModal()        : ""}
+  ${modal==="title"        ? renderTitleModal()        : ""}
+  ${modal==="paymethods"   ? renderPayMethodsModal()   : ""}
+  ${modal==="settings"     ? renderSettingsModal()     : ""}
+  ${modal==="reduce-member"? renderReduceMemberModal() : ""}
   `;
 }
 
@@ -1039,6 +1040,46 @@ function renderCatBudgetModal(){
   </div></div>`;
 }
 
+// ── Reduce Member Modal ───────────────────────────────────────────────────────
+let reducePending=null; // {newCount, newMode, removedIndices:[]}
+
+function renderReduceMemberModal(){
+  if(!reducePending) return "";
+  const{newCount,removedIndices}=reducePending;
+  const keepNames=names().slice(0,newCount);
+  const removeInfos=removedIndices.map(i=>({
+    idx:i, name:names()[i]||"成員"+(i+1), emoji:emojis()[i]||"👤",
+    count:Object.values(records).filter(r=>r.paidBy===i).length
+  }));
+  const hasRecords=removeInfos.some(r=>r.count>0);
+  return `<div class="overlay" id="overlay-reduce"><div class="modal-card">
+    <div class="modal-handle"></div>
+    <div class="modal-title">⚠️ 縮減成員</div>
+    <div style="font-size:13px;color:var(--sub);margin-bottom:14px;line-height:1.6">
+      以下成員將被移除：
+      ${removeInfos.map(r=>`<div style="margin-top:6px;padding:8px 12px;background:var(--surface2);border-radius:8px;display:flex;justify-content:space-between;align-items:center">
+        <span>${r.emoji} ${r.name}</span>
+        <span style="font-size:11px;color:${r.count>0?"var(--warn)":"var(--mute)"}">${r.count>0?`共 ${r.count} 筆支出記錄`:"無記錄"}</span>
+      </div>`).join("")}
+    </div>
+    ${hasRecords?`
+    <div style="font-size:11px;font-weight:700;color:var(--sub);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px">被移除成員的記錄要怎麼處理？</div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">
+      <button id="reduce-merge" style="border:1.5px solid var(--border);border-radius:10px;padding:12px;font-size:13px;cursor:pointer;background:var(--surface2);color:var(--text);text-align:left">
+        🔀 <b>合併</b>到 ${keepNames[0]} 的名下
+      </button>
+      <button id="reduce-delete" style="border:1.5px solid rgba(184,112,112,.4);border-radius:10px;padding:12px;font-size:13px;cursor:pointer;background:rgba(184,112,112,.06);color:var(--danger);text-align:left">
+        🗑 <b>刪除</b>所有被移除成員的記錄
+      </button>
+    </div>`:`
+    <div style="margin-bottom:14px;font-size:13px;color:var(--mute)">被移除的成員沒有任何記錄，可以直接縮減。</div>`}
+    <div style="display:flex;gap:8px">
+      <button id="reduce-cancel" style="flex:1;border:1.5px solid var(--border);border-radius:10px;padding:12px;font-size:13px;cursor:pointer;background:var(--surface2);color:var(--sub)">取消</button>
+      ${!hasRecords?`<button id="reduce-confirm" class="submit-btn" style="flex:1;margin-top:0">確認縮減</button>`:""}
+    </div>
+  </div></div>`;
+}
+
 function renderTitleModal(){
   return `<div class="overlay" id="overlay"><div class="modal-card" style="max-height:44vh">
     <div class="modal-handle"></div><div class="modal-title">修改帳本名稱</div>
@@ -1139,6 +1180,8 @@ function bindAppEvents(){
 
   const ov=document.getElementById("overlay");
   if(ov) ov.onclick=e=>{ if(e.target===ov){modal=null;render();} };
+  const ovR=document.getElementById("overlay-reduce");
+  if(ovR) ovR.onclick=e=>{ if(e.target===ovR){reducePending=null;modal="settings";render();} };
 
   if(modal==="add"){
     // ── helper: toggle active style without re-render ──────────────────────
@@ -1389,6 +1432,33 @@ function bindAppEvents(){
       await fbSave({catBudgets:cb}); modal=null; render(); showToast("✦ 分類預算已儲存");
     };
   }
+  if(modal==="reduce-member"&&reducePending){
+    const mergeBtn=document.getElementById("reduce-merge");
+    const deleteBtn=document.getElementById("reduce-delete");
+    const cancelBtn=document.getElementById("reduce-cancel");
+    const confirmBtn=document.getElementById("reduce-confirm");
+    if(cancelBtn) cancelBtn.onclick=()=>{reducePending=null;modal="settings";render();};
+    if(confirmBtn) confirmBtn.onclick=()=>applyCountChange(reducePending.newCount,reducePending.newMode);
+    if(mergeBtn) mergeBtn.onclick=async()=>{
+      // Reassign all removed members' records to member 0
+      const{removedIndices}=reducePending;
+      const updates={};
+      Object.entries(records).forEach(([key,rec])=>{
+        if(removedIndices.includes(rec.paidBy)) updates[key]={...rec,paidBy:0};
+      });
+      await Promise.all(Object.entries(updates).map(([k,v])=>fbUpdate(k,v)));
+      showToast("✦ 已合併到 "+label(0));
+      await applyCountChange(reducePending.newCount,reducePending.newMode);
+    };
+    if(deleteBtn) deleteBtn.onclick=async()=>{
+      if(!confirm("確定要刪除這些記錄？此動作無法復原。")) return;
+      const{removedIndices}=reducePending;
+      const toDelete=Object.entries(records).filter(([,rec])=>removedIndices.includes(rec.paidBy)).map(([k])=>k);
+      await Promise.all(toDelete.map(k=>fbDel(k)));
+      showToast(`✦ 已刪除 ${toDelete.length} 筆記錄`);
+      await applyCountChange(reducePending.newCount,reducePending.newMode);
+    };
+  }
   if(modal==="settings"){
     const copyBtn=document.getElementById("btn-copy-room");
     if(copyBtn) copyBtn.onclick=()=>{
@@ -1408,37 +1478,39 @@ function bindAppEvents(){
       }
       return {names:curNames.slice(0,newCount), nameEmojis:curEmojis.slice(0,newCount)};
     }
+    async function applyCountChange(newCount, newMode){
+      const memberPatch=patchMembersForCount(newCount);
+      const extra={};
+      for(let i=0;i<newCount;i++){
+        if(!settings["budget"+i]) extra["budget"+i]=5000;
+        if(!settings["salary"+i]) extra["salary"+i]=30000;
+        if(!settings["savingsGoal"+i]) extra["savingsGoal"+i]=8000;
+        if(!settings["lastSaved"+i]) extra["lastSaved"+i]=0;
+      }
+      const patch={memberCount:newCount,...memberPatch,...extra};
+      if(newMode) patch.mode=newMode;
+      await fbSave(patch);
+      reducePending=null; modal="settings"; render();
+    }
+
+    function checkAndReduceMembers(newCount, newMode){
+      const oldCount=memberCount();
+      if(newCount>=oldCount){ applyCountChange(newCount,newMode); return; }
+      // Shrinking — check removed indices for records
+      const removedIndices=Array.from({length:oldCount-newCount},(_,i)=>newCount+i);
+      reducePending={newCount,newMode:newMode||null,removedIndices};
+      modal="reduce-member"; render();
+    }
+
     document.querySelectorAll(".set-mode-btn").forEach(b=>{
-      b.onclick=async()=>{
+      b.onclick=()=>{
         const newMode=b.dataset.mode;
         const newCount=newMode==="personal"?1:newMode==="couple"?2:(settings.memberCount||2);
-        const memberPatch=patchMembersForCount(newCount);
-        // Also ensure budgetN/salaryN/savingsGoalN/lastSavedN exist for new members
-        const extra={};
-        for(let i=0;i<newCount;i++){
-          if(!settings["budget"+i]) extra["budget"+i]=5000;
-          if(!settings["salary"+i]) extra["salary"+i]=30000;
-          if(!settings["savingsGoal"+i]) extra["savingsGoal"+i]=8000;
-          if(!settings["lastSaved"+i]) extra["lastSaved"+i]=0;
-        }
-        await fbSave({mode:newMode,memberCount:newCount,...memberPatch,...extra});
-        render();
+        checkAndReduceMembers(newCount, newMode);
       };
     });
     document.querySelectorAll(".set-count-btn").forEach(b=>{
-      b.onclick=async()=>{
-        const newCount=+b.dataset.count;
-        const memberPatch=patchMembersForCount(newCount);
-        const extra={};
-        for(let i=0;i<newCount;i++){
-          if(!settings["budget"+i]) extra["budget"+i]=5000;
-          if(!settings["salary"+i]) extra["salary"+i]=30000;
-          if(!settings["savingsGoal"+i]) extra["savingsGoal"+i]=8000;
-          if(!settings["lastSaved"+i]) extra["lastSaved"+i]=0;
-        }
-        await fbSave({memberCount:newCount,...memberPatch,...extra});
-        render();
-      };
+      b.onclick=()=>{ checkAndReduceMembers(+b.dataset.count, null); };
     });
     document.getElementById("btn-settings-save").onclick=async()=>{
       const p={};
