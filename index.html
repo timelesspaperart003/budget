@@ -973,21 +973,16 @@ function renderFinModal(){
 }
 
 function renderNamesModal(){
-  const n=names(),e=emojis();
+  const n=names(),e=emojis(),count=memberCount();
   return `<div class="overlay" id="overlay"><div class="modal-card">
     <div class="modal-handle"></div><div class="modal-title">修改成員名稱</div>
-    <div class="field"><label>第一位</label>
+    ${Array.from({length:count},(_,i)=>`
+    <div class="field"><label>第 ${i+1} 位</label>
       <div style="display:flex;gap:8px">
-        <input id="nm-e0" value="${e[0]}" style="width:56px;text-align:center;font-size:20px;border:1.5px solid var(--border);border-radius:9px;padding:9px 4px;background:var(--surface2);outline:none;color:var(--text)"/>
-        <input id="nm-n0" value="${n[0]}" style="flex:1;border:1.5px solid var(--border);border-radius:9px;padding:9px 12px;font-size:14px;background:var(--surface2);outline:none;color:var(--text)"/>
+        <input class="nm-emoji" data-idx="${i}" value="${e[i]||DEFAULT_EMOJIS[i]}" style="width:56px;text-align:center;font-size:20px;border:1.5px solid var(--border);border-radius:9px;padding:9px 4px;background:var(--surface2);outline:none;color:var(--text)"/>
+        <input class="nm-name" data-idx="${i}" value="${n[i]||DEFAULT_NAMES[i]}" style="flex:1;border:1.5px solid var(--border);border-radius:9px;padding:9px 12px;font-size:14px;background:var(--surface2);outline:none;color:var(--text)"/>
       </div>
-    </div>
-    <div class="field"><label>第二位</label>
-      <div style="display:flex;gap:8px">
-        <input id="nm-e1" value="${e[1]}" style="width:56px;text-align:center;font-size:20px;border:1.5px solid var(--border);border-radius:9px;padding:9px 4px;background:var(--surface2);outline:none;color:var(--text)"/>
-        <input id="nm-n1" value="${n[1]}" style="flex:1;border:1.5px solid var(--border);border-radius:9px;padding:9px 12px;font-size:14px;background:var(--surface2);outline:none;color:var(--text)"/>
-      </div>
-    </div>
+    </div>`).join("")}
     <button class="submit-btn" id="btn-names-save">儲存</button>
   </div></div>`;
 }
@@ -1318,11 +1313,13 @@ function bindAppEvents(){
   }
   if(modal==="names"){
     document.getElementById("btn-names-save").onclick=async()=>{
-      const e0=document.getElementById("nm-e0").value||emojis()[0];
-      const n0=document.getElementById("nm-n0").value||names()[0];
-      const e1=document.getElementById("nm-e1").value||emojis()[1];
-      const n1=document.getElementById("nm-n1").value||names()[1];
-      await fbSave({names:[n0,n1],nameEmojis:[e0,e1]});
+      const count=memberCount();
+      const newNames=[], newEmojis=[];
+      for(let i=0;i<count;i++){
+        newNames.push(document.querySelector(`.nm-name[data-idx="${i}"]`)?.value||names()[i]||DEFAULT_NAMES[i]);
+        newEmojis.push(document.querySelector(`.nm-emoji[data-idx="${i}"]`)?.value||emojis()[i]||DEFAULT_EMOJIS[i]);
+      }
+      await fbSave({names:newNames,nameEmojis:newEmojis});
       modal=null; render(); showToast("✦ 名稱已更新");
     };
   }
@@ -1401,17 +1398,47 @@ function bindAppEvents(){
     if(btnPM) btnPM.onclick=()=>{modal="paymethods";render();};
     const btnCB=document.getElementById("btn-open-catbudget");
     if(btnCB) btnCB.onclick=()=>{modal="catbudget";render();};
-    // Mode selector inside settings
+    // Mode selector inside settings — auto-fill missing names/emojis
+    function patchMembersForCount(newCount){
+      const curNames=[...(settings.names||[])];
+      const curEmojis=[...(settings.nameEmojis||[])];
+      for(let i=curNames.length;i<newCount;i++){
+        curNames.push(DEFAULT_NAMES[i]||"成員"+(i+1));
+        curEmojis.push(DEFAULT_EMOJIS[i]||"👤");
+      }
+      return {names:curNames.slice(0,newCount), nameEmojis:curEmojis.slice(0,newCount)};
+    }
     document.querySelectorAll(".set-mode-btn").forEach(b=>{
       b.onclick=async()=>{
         const newMode=b.dataset.mode;
         const newCount=newMode==="personal"?1:newMode==="couple"?2:(settings.memberCount||2);
-        await fbSave({mode:newMode,memberCount:newCount});
+        const memberPatch=patchMembersForCount(newCount);
+        // Also ensure budgetN/salaryN/savingsGoalN/lastSavedN exist for new members
+        const extra={};
+        for(let i=0;i<newCount;i++){
+          if(!settings["budget"+i]) extra["budget"+i]=5000;
+          if(!settings["salary"+i]) extra["salary"+i]=30000;
+          if(!settings["savingsGoal"+i]) extra["savingsGoal"+i]=8000;
+          if(!settings["lastSaved"+i]) extra["lastSaved"+i]=0;
+        }
+        await fbSave({mode:newMode,memberCount:newCount,...memberPatch,...extra});
         render();
       };
     });
     document.querySelectorAll(".set-count-btn").forEach(b=>{
-      b.onclick=async()=>{ await fbSave({memberCount:+b.dataset.count}); render(); };
+      b.onclick=async()=>{
+        const newCount=+b.dataset.count;
+        const memberPatch=patchMembersForCount(newCount);
+        const extra={};
+        for(let i=0;i<newCount;i++){
+          if(!settings["budget"+i]) extra["budget"+i]=5000;
+          if(!settings["salary"+i]) extra["salary"+i]=30000;
+          if(!settings["savingsGoal"+i]) extra["savingsGoal"+i]=8000;
+          if(!settings["lastSaved"+i]) extra["lastSaved"+i]=0;
+        }
+        await fbSave({memberCount:newCount,...memberPatch,...extra});
+        render();
+      };
     });
     document.getElementById("btn-settings-save").onclick=async()=>{
       const p={};
