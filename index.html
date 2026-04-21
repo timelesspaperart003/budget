@@ -205,11 +205,11 @@ let tab="home", records={}, syncing=false, modal=null;
 let settings={
   mode:"couple",          // "personal" | "couple" | "family"
   memberCount:2,          // 1–8
-  budget:10000,budget0:5000,budget1:5000,
+  budget:0,budget0:0,budget1:0,
   salary0:30000,salary1:30000,
   savingsGoal0:8000,savingsGoal1:7000,
   lastSaved0:0,lastSaved1:0,
-  bookTitle:"我們的帳本",names:["小美","小丑"],nameEmojis:["🌸","🤡"],
+  bookTitle:"我們的帳本",names:["人員1","人員2"],nameEmojis:["👤","👤"],
   payMethods:[],          // user-defined payment methods [{id,name}]
   showPayMethod:true,     // show payment method field
   catBudgets:{}           // {"🍽 餐點-0":4000, "🍽 餐點-1":4000, ...}
@@ -220,7 +220,7 @@ let calMonth={y:new Date().getFullYear(),m:new Date().getMonth()}, calSel=null;
 
 let form=freshForm(), budgetDraft="", editKey=null; // editKey: key of record being edited
 let authError="";
-let setupDraft={bookTitle:"我們的帳本",name0:"小美",emoji0:"🌸",name1:"小丑",emoji1:"🤡"};
+let setupDraft={bookTitle:"我們的帳本",name0:"人員1",emoji0:"👤",name1:"人員2",emoji1:"👤"};
 let unsubRec, unsubSet;
 
 function freshForm(){ return {date:today(),amount:"",category:CATEGORIES[0],mealType:"",restaurant:"",payMethodId:"",paidBy:myIndex??0,note:"",splitEvenly:false}; }
@@ -228,8 +228,8 @@ function today(){ return new Date().toISOString().slice(0,10); }
 function thisMonthKey(){ const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`; }
 function genCode(){ return Math.random().toString(36).slice(2,8).toUpperCase(); }
 function memberCount(){ return Math.max(1, settings.memberCount||2); }
-function names(){ const n=settings.names||["小美","小丑"]; return n.slice(0,memberCount()); }
-function emojis(){ const e=settings.nameEmojis||["🌸","🤡"]; return e.slice(0,memberCount()); }
+function names(){ const n=settings.names||["人員1","人員2"]; return n.slice(0,memberCount()); }
+function emojis(){ const e=settings.nameEmojis||["👤","👤"]; return e.slice(0,memberCount()); }
 function label(i){ return `${(emojis()[i]||"👤")} ${(names()[i]||"成員"+(i+1))}`; }
 function payMethods(){ return settings.payMethods||[]; }
 
@@ -300,7 +300,7 @@ async function finishSetup(){
     es.push(setupDraft["emoji"+i]||DEFAULT_EMOJIS[i]);
   }
   // Ensure budget arrays are sized correctly
-  const budgets=Array.from({length:count},(_,i)=>5000);
+  const budgets=Array.from({length:count},(_,i)=>0);
   const patch={
     mode:setupDraftMode, memberCount:count,
     bookTitle:setupDraft.bookTitle||"我們的帳本",
@@ -325,10 +325,10 @@ function leaveRoom(){
   if(unsubRec) unsubRec();
   if(unsubSet) unsubSet();
   roomId=null; myIndex=null; screen="login"; authError="";
-  records={}; settings={mode:"couple",memberCount:2,budget:10000,budget0:5000,budget1:5000,
+  records={}; settings={mode:"couple",memberCount:2,budget:0,budget0:0,budget1:0,
     salary0:30000,salary1:30000,
     savingsGoal0:8000,savingsGoal1:7000,lastSaved0:0,lastSaved1:0,
-    bookTitle:"我們的帳本",names:["小美","小丑"],nameEmojis:["🌸","🤡"],
+    bookTitle:"我們的帳本",names:["人員1","人員2"],nameEmojis:["👤","👤"],
     payMethods:[],showPayMethod:true,catBudgets:{}};
   render();
 }
@@ -414,8 +414,8 @@ function bindLoginEvents(){
 // ── Setup (new room) ──────────────────────────────────────────────────────────
 let setupDraftMode="couple", setupDraftCount=2;
 const MODE_LABELS={personal:"個人",couple:"情侶",family:"家庭"};
-const DEFAULT_EMOJIS=["🌸","🤡","🦁","🐻","🌿","🌊","🎸","⭐"];
-const DEFAULT_NAMES=["小美","小丑","成員3","成員4","成員5","成員6","成員7","成員8"];
+const DEFAULT_EMOJIS=["👤","👤","👤","👤","👤","👤","👤","👤"];
+const DEFAULT_NAMES=["人員1","人員2","人員3","人員4","人員5","人員6","人員7","人員8"];
 
 function renderSetup(){
   const d=setupDraft;
@@ -1482,7 +1482,7 @@ function bindAppEvents(){
       const memberPatch=patchMembersForCount(newCount);
       const extra={};
       for(let i=0;i<newCount;i++){
-        if(!settings["budget"+i]) extra["budget"+i]=5000;
+        if(!settings["budget"+i]) extra["budget"+i]=0;
         if(!settings["salary"+i]) extra["salary"+i]=30000;
         if(!settings["savingsGoal"+i]) extra["savingsGoal"+i]=8000;
         if(!settings["lastSaved"+i]) extra["lastSaved"+i]=0;
