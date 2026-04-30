@@ -318,6 +318,7 @@ function pickIdentity(idx){
   screen="app";
   form=freshForm();
   render();
+  window.scrollTo({top:0,behavior:"instant"});
 }
 
 function leaveRoom(){
@@ -352,9 +353,9 @@ function showToast(msg){ clearTimeout(toastTimer); const el=document.getElementB
 function render(){
   const app=document.getElementById("app");
   if(screen==="loading"){ app.innerHTML=`<div class="auth-screen"><div class="auth-loading"><div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div></div></div>`; return; }
-  if(screen==="login")   { app.innerHTML=renderLogin();    bindLoginEvents();    return; }
+  if(screen==="login")   { app.innerHTML=renderLogin();    bindLoginEvents();    window.scrollTo({top:0,behavior:"instant"}); return; }
   if(screen==="setup")   { app.innerHTML=renderSetup();    bindSetupEvents();    return; }
-  if(screen==="identity"){ app.innerHTML=renderIdentity(); bindIdentityEvents(); return; }
+  if(screen==="identity"){ app.innerHTML=renderIdentity(); bindIdentityEvents(); window.scrollTo({top:0,behavior:"instant"}); return; }
   app.innerHTML=renderApp(); bindAppEvents();
 }
 
@@ -831,12 +832,14 @@ function renderAddModal(){
   return `<div class="overlay" id="overlay"><div class="modal-card">
     <div class="modal-handle"></div><div class="modal-title">新增支出</div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-      <div class="field" style="margin-bottom:0"><label>日期</label>
-        <input type="date" id="f-date" value="${date}" style="width:100%;border:1.5px solid var(--border);border-radius:9px;padding:9px 8px;font-size:13px;outline:none;color:var(--text);background:var(--surface2);"/>
+    <div style="display:flex;gap:10px;margin-bottom:12px;align-items:flex-end">
+      <div style="width:130px;flex-shrink:0">
+        <label style="font-size:10px;color:var(--sub);font-weight:700;display:block;margin-bottom:6px;letter-spacing:1px;text-transform:uppercase">日期</label>
+        <input type="date" id="f-date" value="${date}" style="width:100%;border:1.5px solid var(--border);border-radius:9px;padding:9px 8px;font-size:12px;outline:none;color:var(--text);background:var(--surface2);"/>
       </div>
-      <div class="field" style="margin-bottom:0"><label>金額（NT$）</label>
-        <input type="number" id="f-amount" placeholder="0" value="${amount}" style="width:100%;border:1.5px solid var(--border);border-radius:9px;padding:9px 10px;font-size:15px;font-weight:700;outline:none;color:var(--text);background:var(--surface2);"/>
+      <div style="flex:1">
+        <label style="font-size:10px;color:var(--sub);font-weight:700;display:block;margin-bottom:6px;letter-spacing:1px;text-transform:uppercase">金額（NT$）</label>
+        <input type="number" id="f-amount" placeholder="0" value="${amount}" style="width:100%;border:1.5px solid var(--border);border-radius:9px;padding:9px 12px;font-size:18px;font-weight:800;outline:none;color:var(--text);background:var(--surface2);letter-spacing:-0.5px;"/>
       </div>
     </div>
 
@@ -903,12 +906,14 @@ function renderEditModal(){
   const suggestions=getRestaurantSuggestions();
   return `<div class="overlay" id="overlay"><div class="modal-card">
     <div class="modal-handle"></div><div class="modal-title">編輯支出</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-      <div class="field" style="margin-bottom:0"><label>日期</label>
-        <input type="date" id="e-date" value="${date}" style="width:100%;border:1.5px solid var(--border);border-radius:9px;padding:9px 8px;font-size:13px;outline:none;color:var(--text);background:var(--surface2);"/>
+    <div style="display:flex;gap:10px;margin-bottom:12px;align-items:flex-end">
+      <div style="width:130px;flex-shrink:0">
+        <label style="font-size:10px;color:var(--sub);font-weight:700;display:block;margin-bottom:6px;letter-spacing:1px;text-transform:uppercase">日期</label>
+        <input type="date" id="e-date" value="${date}" style="width:100%;border:1.5px solid var(--border);border-radius:9px;padding:9px 8px;font-size:12px;outline:none;color:var(--text);background:var(--surface2);"/>
       </div>
-      <div class="field" style="margin-bottom:0"><label>金額（NT$）</label>
-        <input type="number" id="e-amount" value="${amount}" style="width:100%;border:1.5px solid var(--border);border-radius:9px;padding:9px 10px;font-size:15px;font-weight:700;outline:none;color:var(--text);background:var(--surface2);"/>
+      <div style="flex:1">
+        <label style="font-size:10px;color:var(--sub);font-weight:700;display:block;margin-bottom:6px;letter-spacing:1px;text-transform:uppercase">金額（NT$）</label>
+        <input type="number" id="e-amount" value="${amount}" style="width:100%;border:1.5px solid var(--border);border-radius:9px;padding:9px 12px;font-size:18px;font-weight:800;outline:none;color:var(--text);background:var(--surface2);letter-spacing:-0.5px;"/>
       </div>
     </div>
     <div class="field"><label>分類</label><div class="cat-grid">
@@ -1153,7 +1158,7 @@ function renderSettingsModal(){
 
 // ── App Events ────────────────────────────────────────────────────────────────
 function bindAppEvents(){
-  document.querySelectorAll(".nav-btn").forEach(b=>{ b.onclick=()=>{tab=b.dataset.tab;render();}; });
+  document.querySelectorAll(".nav-btn").forEach(b=>{ b.onclick=()=>{tab=b.dataset.tab;render();window.scrollTo({top:0,behavior:"instant"});}; });
   document.getElementById("btn-add").onclick=()=>{modal="add";form=freshForm();render();};
   document.getElementById("btn-leave").onclick=leaveRoom;
   const elTitle=document.getElementById("btn-edit-title"); if(elTitle) elTitle.onclick=()=>{modal="title";render();};
