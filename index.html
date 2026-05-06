@@ -338,7 +338,7 @@ function leaveRoom(){
 
 // ── Derived ───────────────────────────────────────────────────────────────────
 function recList(){ return Object.entries(records).map(([k,v])=>({...v,_key:k})).sort((a,b)=>b.date.localeCompare(a.date)); }
-function totalByPartner(){ const t=[0,0]; recList().forEach(r=>{t[r.paidBy]+=r.amount;}); return t; }
+function totalByPartner(){ const count=memberCount(); const t=Array(count).fill(0); recList().forEach(r=>{if(r.paidBy>=0&&r.paidBy<count) t[r.paidBy]=(t[r.paidBy]||0)+r.amount;}); return t; }
 function thisMonthSpent(){ return recList().filter(r=>r.date.slice(0,7)===thisMonthKey()).reduce((s,r)=>s+r.amount,0); }
 function catData(){ const m={}; recList().forEach(r=>{m[r.category]=(m[r.category]||0)+r.amount;}); return Object.entries(m).map(([n,v])=>({name:n,value:v})); }
 function barData(){ const mo={}; recList().forEach(r=>{const k=r.date.slice(0,7);mo[k]=(mo[k]||0)+r.amount;}); return Object.entries(mo).sort().slice(-6).map(([m,v])=>({name:m.slice(5)+"月",value:v})); }
@@ -512,11 +512,19 @@ function bindIdentityEvents(){
 
 // ── Main App ──────────────────────────────────────────────────────────────────
 function renderApp(){
-  const tbp=totalByPartner(),total=tbp[0]+tbp[1],spent=thisMonthSpent();
-  const{budget,budget0,budget1,salary0,salary1,savingsGoal0,savingsGoal1,lastSaved0,lastSaved1,bookTitle}=settings;
-  const totalSalary=(salary0||0)+(salary1||0);
-  const totalSavingsGoal=(savingsGoal0||0)+(savingsGoal1||0);
-  const totalLastSaved=(lastSaved0||0)+(lastSaved1||0);
+  const count=memberCount();
+  const tbp=totalByPartner();
+  const total=tbp.reduce((s,v)=>s+v,0);
+  const spent=thisMonthSpent();
+  const{budget,bookTitle}=settings;
+  // Dynamic arrays for all members
+  const salaries=Array.from({length:count},(_,i)=>settings["salary"+i]||0);
+  const savGoals=Array.from({length:count},(_,i)=>settings["savingsGoal"+i]||0);
+  const lastSaveds=Array.from({length:count},(_,i)=>settings["lastSaved"+i]||0);
+  const budgets=Array.from({length:count},(_,i)=>settings["budget"+i]||0);
+  const totalSalary=salaries.reduce((s,v)=>s+v,0);
+  const totalSavingsGoal=savGoals.reduce((s,v)=>s+v,0);
+  const totalLastSaved=lastSaveds.reduce((s,v)=>s+v,0);
   const budgetPct=budget>0?Math.min(spent/budget*100,100):0;
   const budgetLeft=budget-spent,budgetOver=budgetLeft<0;
   const proj=totalSalary-spent,savRate=totalSavingsGoal>0?Math.min(proj/totalSavingsGoal*100,100):0;
@@ -545,10 +553,10 @@ function renderApp(){
   </header>
 
   <main class="main">
-    ${tab==="home"  ? renderHome(tbp,total,spent,budget,budget0,budget1,budgetPct,budgetLeft,budgetOver,budgetBarColor,salary0,salary1,totalSalary,savingsGoal0,savingsGoal1,totalSavingsGoal,lastSaved0,lastSaved1,totalLastSaved,proj,savRate,lastRate,savColor) : ""}
+    ${tab==="home"  ? renderHome(tbp,total,spent,budget,budgets,salaries,savGoals,lastSaveds,budgetPct,budgetLeft,budgetOver,budgetBarColor,totalSalary,totalSavingsGoal,totalLastSaved,proj,savRate,lastRate,savColor) : ""}
     ${tab==="chart" ? renderChart() : ""}
     ${tab==="cal"   ? renderCal()   : ""}
-    ${tab==="stat"  ? renderStat(tbp,total) : ""}
+    ${tab==="stat"  ? renderStat(tbp,total,salaries,savGoals,lastSaveds,budgets) : ""}
   </main>
 
   <nav class="nav">
@@ -570,15 +578,12 @@ function renderApp(){
 }
 
 // ── Home ──────────────────────────────────────────────────────────────────────
-function renderHome(tbp,total,spent,budget,budget0,budget1,budgetPct,budgetLeft,budgetOver,budgetBarColor,salary0,salary1,totalSalary,savingsGoal0,savingsGoal1,totalSavingsGoal,lastSaved0,lastSaved1,totalLastSaved,proj,savRate,lastRate,savColor){
-  const budgets=[budget0||0,budget1||0];
+function renderHome(tbp,total,spent,budget,budgets,salaries,savGoals,lastSaveds,budgetPct,budgetLeft,budgetOver,budgetBarColor,totalSalary,totalSavingsGoal,totalLastSaved,proj,savRate,lastRate,savColor){
+  const count=memberCount();
   const recs=recList(),bd=barData(),bdMax=bd.length?Math.max(...bd.map(d=>d.value)):1;
   const spentByP=tbp;
-  const salaries=[salary0||0,salary1||0];
-  const savGoals=[savingsGoal0||0,savingsGoal1||0];
-  const lastSaveds=[lastSaved0||0,lastSaved1||0];
-  const projByP=salaries.map((s,i)=>s-spentByP[i]);
-  const savColorByP=projByP.map((p,i)=>p>=savGoals[i]?"var(--green)":p>=0?"var(--warn)":"var(--danger)");
+  const projByP=salaries.map((s,i)=>s-(spentByP[i]||0));
+  const savColorByP=projByP.map((p,i)=>p>=(savGoals[i]||0)?"var(--green)":p>=0?"var(--warn)":"var(--danger)");
 
   const finCardCombined=`
     <div class="fin-row"><span class="fin-label">💴 合計收入</span><span class="fin-val">NT$ ${totalSalary.toLocaleString()}</span></div>
@@ -605,25 +610,24 @@ function renderHome(tbp,total,spent,budget,budget0,budget1,budgetPct,budgetLeft,
     </div>`;
 
   const finCardIndividual=`
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:2px">
+    <div style="display:grid;grid-template-columns:${count<=2?"1fr 1fr":count<=3?"1fr 1fr 1fr":"1fr 1fr"};gap:10px;margin-bottom:2px">
       ${names().map((n,i)=>{
-        const sc=savColorByP[i];
-        const lRate=savGoals[i]>0?(lastSaveds[i]/savGoals[i]*100).toFixed(0):0;
-        return `<div style="background:var(--surface2);border-radius:12px;padding:12px;border-left:3px solid ${i===0?"var(--rose)":"var(--sage)"}">
-          <div style="font-size:11px;color:var(--sub);margin-bottom:6px">${emojis()[i]} ${n}</div>
+        const sc=savColorByP[i]||"var(--sage)";
+        const sg=savGoals[i]||0, ls=lastSaveds[i]||0, sp=spentByP[i]||0, sal=salaries[i]||0;
+        const lRate=sg>0?(ls/sg*100).toFixed(0):0;
+        return `<div style="background:var(--surface2);border-radius:12px;padding:12px;border-left:3px solid var(--clay)">
+          <div style="font-size:11px;color:var(--sub);margin-bottom:6px">${emojis()[i]||"👤"} ${n}</div>
           <div style="font-size:10px;color:var(--mute)">收入</div>
-          <div style="font-size:14px;font-weight:700;margin-bottom:4px">NT$ ${salaries[i].toLocaleString()}</div>
+          <div style="font-size:13px;font-weight:700;margin-bottom:4px">NT$ ${sal.toLocaleString()}</div>
           <div style="font-size:10px;color:var(--mute)">支出</div>
-          <div style="font-size:13px;font-weight:600;color:var(--clay);margin-bottom:4px">－ NT$ ${spentByP[i].toLocaleString()}</div>
-          <div style="height:1px;background:var(--border);margin:6px 0"></div>
+          <div style="font-size:12px;font-weight:600;color:var(--clay);margin-bottom:4px">－ NT$ ${sp.toLocaleString()}</div>
+          <div style="height:1px;background:var(--border);margin:5px 0"></div>
           <div style="font-size:10px;color:var(--mute)">預計可存</div>
-          <div style="font-size:15px;font-weight:800;color:${sc};margin-bottom:6px">${projByP[i]>=0?"":"－"}NT$ ${Math.abs(projByP[i]).toLocaleString()}</div>
-          <div style="font-size:10px;color:var(--mute)">存款目標</div>
-          <div style="font-size:11px;font-weight:600;color:var(--sub)">NT$ ${savGoals[i].toLocaleString()}</div>
-          <div style="height:5px;background:var(--border);border-radius:3px;overflow:hidden;margin-top:5px">
-            <div style="height:100%;background:${sc};border-radius:3px;width:${Math.min(Math.max(savGoals[i]>0?projByP[i]/savGoals[i]*100:0,0),100)}%;transition:width .5s"></div>
+          <div style="font-size:13px;font-weight:800;color:${sc};margin-bottom:5px">${projByP[i]>=0?"":"－"}NT$ ${Math.abs(projByP[i]).toLocaleString()}</div>
+          <div style="height:4px;background:var(--border);border-radius:3px;overflow:hidden">
+            <div style="height:100%;background:${sc};border-radius:3px;width:${Math.min(Math.max(sg>0?projByP[i]/sg*100:0,0),100)}%;transition:width .5s"></div>
           </div>
-          <div style="font-size:10px;color:var(--mute);margin-top:4px">✅ 上月存入 NT$ ${lastSaveds[i].toLocaleString()} · ${lRate}%</div>
+          <div style="font-size:9px;color:var(--mute);margin-top:3px">✅ 上月 NT$ ${ls.toLocaleString()} · ${lRate}%</div>
         </div>`;
       }).join("")}
     </div>`;
@@ -669,17 +673,17 @@ function renderHome(tbp,total,spent,budget,budget0,budget1,budgetPct,budgetLeft,
       ${budgetPct>=80&&!budgetOver?`<div class="warn-banner">⚠ 已使用 ${budgetPct.toFixed(0)}%，快到上限了！</div>`:""}
       ${budgetOver?`<div class="warn-banner" style="background:rgba(184,112,112,.1);color:var(--danger);border-color:rgba(184,112,112,.3)">已超出預算 NT$ ${Math.abs(budgetLeft).toLocaleString()}！</div>`:""}
     `:`
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div style="display:grid;grid-template-columns:${count<=2?"1fr 1fr":count<=3?"1fr 1fr 1fr":"1fr 1fr"};gap:10px">
         ${names().map((n,i)=>{
-          const s=tbp[i], b=budgets[i], over=s>b, pct=b>0?Math.min(s/b*100,100):0, left=b-s;
+          const s=tbp[i]||0, b=budgets[i]||0, over=b>0&&s>b, pct=b>0?Math.min(s/b*100,100):0, left=b-s;
           const bc=over?"var(--danger)":pct>=80?"var(--warn)":"var(--sage)";
-          return `<div style="background:var(--surface2);border-radius:12px;padding:12px;border-left:3px solid ${i===0?"var(--rose)":"var(--sage)"}">
-            <div style="font-size:11px;color:var(--sub);margin-bottom:6px">${emojis()[i]} ${n}</div>
-            <div style="font-size:18px;font-weight:800;color:${over?"var(--danger)":"var(--text)"};letter-spacing:-0.5px">NT$ ${s.toLocaleString()}</div>
-            <div style="font-size:10px;color:var(--mute);margin-bottom:6px">/ ${b.toLocaleString()}</div>
+          return `<div style="background:var(--surface2);border-radius:12px;padding:12px;border-left:3px solid var(--clay)">
+            <div style="font-size:11px;color:var(--sub);margin-bottom:6px">${emojis()[i]||"👤"} ${n}</div>
+            <div style="font-size:16px;font-weight:800;color:${over?"var(--danger)":"var(--text)"};letter-spacing:-0.5px">NT$ ${s.toLocaleString()}</div>
+            <div style="font-size:10px;color:var(--mute);margin-bottom:5px">/ ${b.toLocaleString()}</div>
             <div class="progress-track" style="margin:4px 0"><div class="progress-fill" style="width:${pct}%;background:${bc};min-width:${s>0?"4px":"0"}"></div></div>
             <div style="font-size:10px;font-weight:600;color:${over?"var(--danger)":pct>=80?"var(--warn)":"var(--sub)"}">
-              ${over?`超支 NT$ ${Math.abs(left).toLocaleString()}`:`剩 NT$ ${left.toLocaleString()}`}
+              ${b===0?"未設預算":over?`超支 NT$ ${Math.abs(left).toLocaleString()}`:`剩 NT$ ${left.toLocaleString()}`}
             </div>
           </div>`;
         }).join("")}
@@ -691,7 +695,7 @@ function renderHome(tbp,total,spent,budget,budget0,budget1,budgetPct,budgetLeft,
     <div class="hero-label">本期總支出</div>
     <div class="hero-amt">NT$ ${total.toLocaleString()}</div>
     <div class="hero-sub">
-      ${names().map((n,i)=>`<span class="hero-partner"><span class="hero-dot" style="background:${P_COLORS[i]}"></span>${emojis()[i]} ${n}　<b>NT$ ${tbp[i].toLocaleString()}</b></span>`).join("")}
+      ${names().map((n,i)=>`<span class="hero-partner"><span class="hero-dot" style="background:var(--clay);opacity:${0.5+0.5*(i%2)}"></span>${emojis()[i]||"👤"} ${n}　<b>NT$ ${(tbp[i]||0).toLocaleString()}</b></span>`).join("")}
     </div>
   </div>
 
@@ -792,18 +796,29 @@ function renderCal(){
 }
 
 // ── Stat ──────────────────────────────────────────────────────────────────────
-function renderStat(tbp,total){
-  const pct=total>0?[(tbp[0]/total*100).toFixed(1),(tbp[1]/total*100).toFixed(1)]:[50,50];
+function renderStat(tbp,total,salaries,savGoals,lastSaveds,budgets){
+  const count=memberCount();
+  const COLORS=["var(--rose)","var(--sage)","var(--clay)","var(--slate)","var(--lav)","var(--wheat)","var(--mist)","var(--blush)"];
+  const gridCols=count<=2?"1fr 1fr":count<=3?"1fr 1fr 1fr":"1fr 1fr";
+  const pct=names().map((_,i)=>total>0?((tbp[i]||0)/total*100).toFixed(1):(100/count).toFixed(1));
   return `
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
       <div class="card-title" style="margin-bottom:0">付款比例</div>
       <button class="edit-btn" id="btn-names">✎ 改名</button>
     </div>
-    <div class="bar-track"><div class="bar-a" style="width:${pct[0]}%">${pct[0]}%</div><div class="bar-b" style="width:${pct[1]}%">${pct[1]}%</div></div>
-    <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--sub)"><span>${label(0)}</span><span>${label(1)}</span></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px">
-      ${names().map((n,i)=>`<div class="partner-card" style="border-left:3px solid ${P_COLORS[i]}"><div style="font-size:12px;color:var(--sub)">${label(i)}</div><div style="font-size:20px;font-weight:700;margin-top:4px">NT$ ${tbp[i].toLocaleString()}</div><div style="font-size:11px;color:var(--mute);margin-top:2px">佔比 ${pct[i]}%</div></div>`).join("")}
+    <div style="display:flex;border-radius:8px;overflow:hidden;height:28px;">
+      ${names().map((_,i)=>`<div style="flex:${(tbp[i]||0)+1};background:${COLORS[i%COLORS.length]};display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--surface);font-weight:600;transition:flex .5s">${pct[i]}%</div>`).join("")}
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;font-size:10px">
+      ${names().map((_,i)=>`<span style="color:${COLORS[i%COLORS.length]}">${label(i)}</span>`).join("")}
+    </div>
+    <div style="display:grid;grid-template-columns:${gridCols};gap:10px;margin-top:12px">
+      ${names().map((n,i)=>`<div class="partner-card" style="border-left:3px solid ${COLORS[i%COLORS.length]}">
+        <div style="font-size:11px;color:var(--sub)">${label(i)}</div>
+        <div style="font-size:18px;font-weight:700;margin-top:4px">NT$ ${(tbp[i]||0).toLocaleString()}</div>
+        <div style="font-size:11px;color:var(--mute);margin-top:2px">佔比 ${pct[i]}%</div>
+      </div>`).join("")}
     </div>
   </div>
   ${names().map((_,pi)=>{
@@ -949,45 +964,37 @@ function renderEditModal(){
 }
 
 function renderBudgetModal(){
-  const n=names(),e=emojis();
-  const b=settings.budget, b0=settings.budget0||0, b1=settings.budget1||0;
+  const n=names(),e=emojis(),count=memberCount();
+  const b=settings.budget||0;
+  const gridCols=count<=2?"1fr 1fr":count<=3?"1fr 1fr 1fr":"1fr 1fr";
   return `<div class="overlay" id="overlay"><div class="modal-card">
     <div class="modal-handle"></div><div class="modal-title">設定每月預算</div>
     <div class="field"><label>合計預算（NT$）</label>
-      <input id="budget-input" type="number" value="${b}" style="font-size:20px;font-weight:700;text-align:center"/>
+      <input id="budget-input" type="number" value="${b}" style="font-size:20px;font-weight:700;text-align:center;width:100%;border:1.5px solid var(--border);border-radius:9px;padding:9px 12px;outline:none;color:var(--text);background:var(--surface2);"/>
       <div class="quick-btns" style="margin-top:8px">${[5000,10000,15000,20000,30000].map(v=>`<button class="quick-btn" data-val="${v}">${v>=10000?v/10000+"萬":v/1000+"k"}</button>`).join("")}</div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+    <div style="display:grid;grid-template-columns:${gridCols};gap:10px;margin-bottom:14px">
+      ${Array.from({length:count},(_,i)=>`
       <div class="field" style="margin-bottom:0">
-        <label>${e[0]} ${n[0]} 預算</label>
-        <input id="budget-p0" type="number" value="${b0}" style="text-align:center"/>
-      </div>
-      <div class="field" style="margin-bottom:0">
-        <label>${e[1]} ${n[1]} 預算</label>
-        <input id="budget-p1" type="number" value="${b1}" style="text-align:center"/>
-      </div>
+        <label style="font-size:10px;color:var(--sub);font-weight:700;display:block;margin-bottom:6px;letter-spacing:1px;text-transform:uppercase">${e[i]||"👤"} ${n[i]||"成員"+(i+1)}</label>
+        <input class="budget-p-input" data-idx="${i}" type="number" value="${settings["budget"+i]||0}" style="width:100%;text-align:center;border:1.5px solid var(--border);border-radius:9px;padding:9px 12px;font-size:14px;outline:none;color:var(--text);background:var(--surface2);"/>
+      </div>`).join("")}
     </div>
     <button class="submit-btn" id="btn-budget-save">儲存</button>
   </div></div>`;
 }
 
 function renderFinModal(){
-  const{salary0,salary1,savingsGoal0,savingsGoal1,lastSaved0,lastSaved1}=settings;
-  const n=names(),e=emojis();
+  const n=names(),e=emojis(),count=memberCount();
   return `<div class="overlay" id="overlay"><div class="modal-card">
     <div class="modal-handle"></div><div class="modal-title">財務設定</div>
-    <div style="background:var(--surface2);border-radius:12px;padding:12px 14px;margin-bottom:14px">
-      <div style="font-size:10px;font-weight:700;color:var(--sub);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">${e[0]} ${n[0]}</div>
-      <div class="field" style="margin-bottom:10px"><label>💴 收入（NT$）</label><input id="fin-s0" type="number" value="${salary0||0}"/></div>
-      <div class="field" style="margin-bottom:10px"><label>🎯 存款目標（NT$）</label><input id="fin-g0" type="number" value="${savingsGoal0||0}"/></div>
-      <div class="field" style="margin-bottom:0"><label>✅ 上月成功存入（NT$）</label><input id="fin-l0" type="number" value="${lastSaved0||0}"/></div>
-    </div>
-    <div style="background:var(--surface2);border-radius:12px;padding:12px 14px;margin-bottom:14px">
-      <div style="font-size:10px;font-weight:700;color:var(--sub);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">${e[1]} ${n[1]}</div>
-      <div class="field" style="margin-bottom:10px"><label>💴 收入（NT$）</label><input id="fin-s1" type="number" value="${salary1||0}"/></div>
-      <div class="field" style="margin-bottom:10px"><label>🎯 存款目標（NT$）</label><input id="fin-g1" type="number" value="${savingsGoal1||0}"/></div>
-      <div class="field" style="margin-bottom:0"><label>✅ 上月成功存入（NT$）</label><input id="fin-l1" type="number" value="${lastSaved1||0}"/></div>
-    </div>
+    ${Array.from({length:count},(_,i)=>`
+    <div style="background:var(--surface2);border-radius:12px;padding:12px 14px;margin-bottom:10px">
+      <div style="font-size:10px;font-weight:700;color:var(--sub);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px">${e[i]||"👤"} ${n[i]||"成員"+(i+1)}</div>
+      <div class="field" style="margin-bottom:8px"><label>💴 收入（NT$）</label><input class="fin-sal" data-idx="${i}" type="number" value="${settings["salary"+i]||0}" style="width:100%;border:1.5px solid var(--border);border-radius:9px;padding:9px 12px;font-size:14px;outline:none;color:var(--text);background:var(--surface);"/></div>
+      <div class="field" style="margin-bottom:8px"><label>🎯 存款目標（NT$）</label><input class="fin-goal" data-idx="${i}" type="number" value="${settings["savingsGoal"+i]||0}" style="width:100%;border:1.5px solid var(--border);border-radius:9px;padding:9px 12px;font-size:14px;outline:none;color:var(--text);background:var(--surface);"/></div>
+      <div class="field" style="margin-bottom:0"><label>✅ 上月成功存入（NT$）</label><input class="fin-last" data-idx="${i}" type="number" value="${settings["lastSaved"+i]||0}" style="width:100%;border:1.5px solid var(--border);border-radius:9px;padding:9px 12px;font-size:14px;outline:none;color:var(--text);background:var(--surface);"/></div>
+    </div>`).join("")}
     <button class="submit-btn" id="btn-fin-save">儲存</button>
   </div></div>`;
 }
@@ -1346,25 +1353,18 @@ function bindAppEvents(){
     document.querySelectorAll(".quick-btn").forEach(b=>{b.onclick=()=>{budgetDraft=b.dataset.val;render();};});
     document.getElementById("btn-budget-save").onclick=async()=>{
       const v=+document.getElementById("budget-input").value;
-      const v0=+document.getElementById("budget-p0").value;
-      const v1=+document.getElementById("budget-p1").value;
-      if(!v||isNaN(v)||v<=0) return showToast("請輸入有效預算");
-      await fbSave({budget:v, budget0:v0||0, budget1:v1||0});
+      const p={budget:v||0};
+      document.querySelectorAll(".budget-p-input").forEach(el=>{ p["budget"+el.dataset.idx]=+el.value||0; });
+      await fbSave(p);
       modal=null; render(); showToast("✦ 預算已更新");
     };
   }
   if(modal==="finance"){
-    const s0=document.getElementById("fin-s0"),s1=document.getElementById("fin-s1");
-    const g0=document.getElementById("fin-g0"),g1=document.getElementById("fin-g1");
-    const l0=document.getElementById("fin-l0"),l1=document.getElementById("fin-l1");
     document.getElementById("btn-fin-save").onclick=async()=>{
       const p={};
-      if(+s0.value>=0) p.salary0=+s0.value;
-      if(+s1.value>=0) p.salary1=+s1.value;
-      if(+g0.value>=0) p.savingsGoal0=+g0.value;
-      if(+g1.value>=0) p.savingsGoal1=+g1.value;
-      if(+l0.value>=0) p.lastSaved0=+l0.value;
-      if(+l1.value>=0) p.lastSaved1=+l1.value;
+      document.querySelectorAll(".fin-sal").forEach(el=>{ if(+el.value>=0) p["salary"+el.dataset.idx]=+el.value; });
+      document.querySelectorAll(".fin-goal").forEach(el=>{ if(+el.value>=0) p["savingsGoal"+el.dataset.idx]=+el.value; });
+      document.querySelectorAll(".fin-last").forEach(el=>{ if(+el.value>=0) p["lastSaved"+el.dataset.idx]=+el.value; });
       if(Object.keys(p).length) await fbSave(p);
       modal=null; render(); showToast("✦ 財務資訊已更新");
     };
