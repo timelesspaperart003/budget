@@ -830,7 +830,11 @@ function renderAddModal(){
   const suggestions=getRestaurantSuggestions();
 
   return `<div class="overlay" id="overlay"><div class="modal-card">
-    <div class="modal-handle"></div><div class="modal-title">新增支出</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0">
+      <div class="modal-handle" style="margin:0"></div>
+      <button id="btn-modal-close" style="background:none;border:none;font-size:22px;color:var(--mute);cursor:pointer;padding:0 4px;line-height:1">×</button>
+    </div>
+    <div class="modal-title" style="margin-top:12px">新增支出</div>
 
     <div style="display:flex;gap:10px;margin-bottom:12px;align-items:center;background:var(--surface2);border-radius:12px;border:1.5px solid var(--border);padding:10px 14px;">
       <div style="flex:1;min-width:0">
@@ -1135,19 +1139,13 @@ function renderSettingsModal(){
     <div class="field"><label>帳本名稱</label><input id="set-title" value="${settings.bookTitle||"我們的帳本"}"/></div>
 
     <div style="font-size:10px;font-weight:700;color:var(--sub);letter-spacing:1px;text-transform:uppercase;margin:14px 0 10px">成員名稱</div>
-    <div class="field"><label>第一位</label>
+    ${Array.from({length:count},(_,i)=>`
+    <div class="field"><label>第 ${i+1} 位</label>
       <div style="display:flex;gap:8px">
-        <input id="set-e0" value="${e[0]}" style="width:56px;text-align:center;font-size:20px;border:1.5px solid var(--border);border-radius:9px;padding:9px 4px;background:var(--surface2);outline:none;color:var(--text)"/>
-        <input id="set-n0" value="${n[0]}" style="flex:1;border:1.5px solid var(--border);border-radius:9px;padding:9px 12px;font-size:14px;background:var(--surface2);outline:none;color:var(--text)"/>
+        <input class="set-nm-emoji" data-idx="${i}" value="${e[i]||DEFAULT_EMOJIS[i]}" style="width:56px;text-align:center;font-size:20px;border:1.5px solid var(--border);border-radius:9px;padding:9px 4px;background:var(--surface2);outline:none;color:var(--text)"/>
+        <input class="set-nm-name" data-idx="${i}" value="${n[i]||DEFAULT_NAMES[i]}" style="flex:1;border:1.5px solid var(--border);border-radius:9px;padding:9px 12px;font-size:14px;background:var(--surface2);outline:none;color:var(--text)"/>
       </div>
-    </div>
-    <div class="field"><label>第二位</label>
-      <div style="display:flex;gap:8px">
-        <input id="set-e1" value="${e[1]}" style="width:56px;text-align:center;font-size:20px;border:1.5px solid var(--border);border-radius:9px;padding:9px 4px;background:var(--surface2);outline:none;color:var(--text)"/>
-        <input id="set-n1" value="${n[1]}" style="flex:1;border:1.5px solid var(--border);border-radius:9px;padding:9px 12px;font-size:14px;background:var(--surface2);outline:none;color:var(--text)"/>
-      </div>
-    </div>
-
+    </div>`).join("")}
     <div style="font-size:10px;font-weight:700;color:var(--sub);letter-spacing:1px;text-transform:uppercase;margin:14px 0 10px">修改密碼</div>
     <div class="field"><label>目前密碼</label><input id="set-pw-old" type="password" placeholder="輸入目前密碼"/></div>
     <div class="field"><label>新密碼</label><input id="set-pw-new" type="password" placeholder="輸入新密碼（至少 4 字元）"/></div>
@@ -1206,6 +1204,8 @@ function bindAppEvents(){
       });
     }
 
+    const closeBtn=document.getElementById("btn-modal-close");
+    if(closeBtn) closeBtn.onclick=()=>{modal=null;render();};
     document.getElementById("f-date").onchange=e=>{form.date=e.target.value;};
     document.getElementById("f-amount").oninput=e=>{
       form.amount=e.target.value;
@@ -1483,40 +1483,6 @@ function bindAppEvents(){
     if(btnPM) btnPM.onclick=()=>{modal="paymethods";render();};
     const btnCB=document.getElementById("btn-open-catbudget");
     if(btnCB) btnCB.onclick=()=>{modal="catbudget";render();};
-    // Mode selector inside settings — auto-fill missing names/emojis
-    function patchMembersForCount(newCount){
-      const curNames=[...(settings.names||[])];
-      const curEmojis=[...(settings.nameEmojis||[])];
-      for(let i=curNames.length;i<newCount;i++){
-        curNames.push(DEFAULT_NAMES[i]||"成員"+(i+1));
-        curEmojis.push(DEFAULT_EMOJIS[i]||"👤");
-      }
-      return {names:curNames.slice(0,newCount), nameEmojis:curEmojis.slice(0,newCount)};
-    }
-    async function applyCountChange(newCount, newMode){
-      const memberPatch=patchMembersForCount(newCount);
-      const extra={};
-      for(let i=0;i<newCount;i++){
-        if(!settings["budget"+i]) extra["budget"+i]=0;
-        if(!settings["salary"+i]) extra["salary"+i]=30000;
-        if(!settings["savingsGoal"+i]) extra["savingsGoal"+i]=8000;
-        if(!settings["lastSaved"+i]) extra["lastSaved"+i]=0;
-      }
-      const patch={memberCount:newCount,...memberPatch,...extra};
-      if(newMode) patch.mode=newMode;
-      await fbSave(patch);
-      reducePending=null; modal="settings"; render();
-    }
-
-    function checkAndReduceMembers(newCount, newMode){
-      const oldCount=memberCount();
-      if(newCount>=oldCount){ applyCountChange(newCount,newMode); return; }
-      // Shrinking — check removed indices for records
-      const removedIndices=Array.from({length:oldCount-newCount},(_,i)=>newCount+i);
-      reducePending={newCount,newMode:newMode||null,removedIndices};
-      modal="reduce-member"; render();
-    }
-
     document.querySelectorAll(".set-mode-btn").forEach(b=>{
       b.onclick=()=>{
         const newMode=b.dataset.mode;
@@ -1529,39 +1495,67 @@ function bindAppEvents(){
     });
     document.getElementById("btn-settings-save").onclick=async()=>{
       const p={};
-      const title=document.getElementById("set-title").value.trim();
-      const e0=document.getElementById("set-e0").value||emojis()[0];
-      const n0=document.getElementById("set-n0").value||names()[0];
-      const e1=document.getElementById("set-e1").value||emojis()[1];
-      const n1=document.getElementById("set-n1").value||names()[1];
-      if(title) p.bookTitle=title;
-      p.names=[n0,n1]; p.nameEmojis=[e0,e1];
-
-      // Password change (optional)
-      const pwOld=document.getElementById("set-pw-old").value.trim();
-      const pwNew=document.getElementById("set-pw-new").value.trim();
-      const pwNew2=document.getElementById("set-pw-new2").value.trim();
+      const titleEl=document.getElementById("set-title");
+      if(titleEl?.value.trim()) p.bookTitle=titleEl.value.trim();
+      // Save all member names dynamically
+      const count=memberCount();
+      const newNames=[],newEmojis=[];
+      for(let i=0;i<count;i++){
+        newNames.push(document.querySelector(\`.set-nm-name[data-idx="${i}"]\`)?.value||names()[i]||DEFAULT_NAMES[i]);
+        newEmojis.push(document.querySelector(\`.set-nm-emoji[data-idx="${i}"]\`)?.value||emojis()[i]||DEFAULT_EMOJIS[i]);
+      }
+      p.names=newNames; p.nameEmojis=newEmojis;
+      // Password change
+      const pwOld=document.getElementById("set-pw-old")?.value.trim()||"";
+      const pwNew=document.getElementById("set-pw-new")?.value.trim()||"";
+      const pwNew2=document.getElementById("set-pw-new2")?.value.trim()||"";
       const msg=document.getElementById("set-pw-msg");
       if(pwNew||pwOld){
-        if(!pwOld){ msg.textContent="請輸入目前密碼"; msg.style.display="block"; return; }
-        if(pwNew.length<4){ msg.textContent="新密碼至少 4 個字元"; msg.style.display="block"; return; }
-        if(pwNew!==pwNew2){ msg.textContent="兩次新密碼不一致"; msg.style.display="block"; return; }
-        // Verify old password
-        const [oldHash, snap] = await Promise.all([
-          hashPw(pwOld),
-          get(ref(db,`roomAuth/${roomId}/pwHash`))
-        ]);
-        if(oldHash!==snap.val()){ msg.textContent="目前密碼錯誤"; msg.style.display="block"; return; }
-        // Save new password
+        if(!pwOld){ if(msg){msg.textContent="請輸入目前密碼";msg.style.display="block";} return; }
+        if(pwNew.length<4){ if(msg){msg.textContent="新密碼至少 4 個字元";msg.style.display="block";} return; }
+        if(pwNew!==pwNew2){ if(msg){msg.textContent="兩次新密碼不一致";msg.style.display="block";} return; }
+        const[oldHash,snap]=await Promise.all([hashPw(pwOld),get(ref(db,`roomAuth/${roomId}/pwHash`))]);
+        if(oldHash!==snap.val()){ if(msg){msg.textContent="目前密碼錯誤";msg.style.display="block";} return; }
         const newHash=await hashPw(pwNew);
         await set(ref(db,`roomAuth/${roomId}/pwHash`),newHash);
         showToast("✦ 密碼已更新");
       }
-
       if(Object.keys(p).length) await fbSave(p);
       modal=null; render(); showToast("✦ 設定已儲存");
     };
   }
+}
+
+// ── Module-level member helpers (must be outside bindAppEvents) ───────────────
+function patchMembersForCount(newCount){
+  const curNames=[...(settings.names||[])];
+  const curEmojis=[...(settings.nameEmojis||[])];
+  for(let i=curNames.length;i<newCount;i++){
+    curNames.push(DEFAULT_NAMES[i]||"人員"+(i+1));
+    curEmojis.push(DEFAULT_EMOJIS[i]||"👤");
+  }
+  return {names:curNames.slice(0,newCount), nameEmojis:curEmojis.slice(0,newCount)};
+}
+async function applyCountChange(newCount, newMode){
+  const memberPatch=patchMembersForCount(newCount);
+  const extra={};
+  for(let i=0;i<newCount;i++){
+    if(settings["budget"+i]===undefined) extra["budget"+i]=0;
+    if(settings["salary"+i]===undefined) extra["salary"+i]=30000;
+    if(settings["savingsGoal"+i]===undefined) extra["savingsGoal"+i]=8000;
+    if(settings["lastSaved"+i]===undefined) extra["lastSaved"+i]=0;
+  }
+  const patch={memberCount:newCount,...memberPatch,...extra};
+  if(newMode) patch.mode=newMode;
+  await fbSave(patch);
+  reducePending=null; modal="settings"; render();
+}
+function checkAndReduceMembers(newCount, newMode){
+  const oldCount=memberCount();
+  if(newCount>=oldCount){ applyCountChange(newCount,newMode); return; }
+  const removedIndices=Array.from({length:oldCount-newCount},(_,i)=>newCount+i);
+  reducePending={newCount,newMode:newMode||null,removedIndices};
+  modal="reduce-member"; render();
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
