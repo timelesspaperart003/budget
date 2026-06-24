@@ -194,6 +194,9 @@ const CAT_COLORS=["#C4A89A","#B8A9E3","#9BAF9E","#B89880","#8FA0AE","#AFA3BC","#
 const MEAL_TYPES=["🌅 早餐","☀️ 午餐","🌙 晚餐","🍰 點心"];
 const FOOD_CATS=["🍽 餐點","🧋 飲料"]; // categories that show restaurant field
 const P_COLORS=["var(--rose)","var(--sage)"];
+// ── Income ──────────────────────────────────────────────────────────────────
+const INCOME_CATEGORIES=["💵 薪資","🎁 獎金","↩️ 退款","📈 其他收入"];
+const INCOME_CAT_COLORS=["#8FAF98","#C8B98A","#9BAF9E","#A3B4B0"];
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let authUser=null;
@@ -223,7 +226,7 @@ let authError="";
 let setupDraft={bookTitle:"我們的帳本",name0:"人員1",emoji0:"👤",name1:"人員2",emoji1:"👤"};
 let unsubRec, unsubSet;
 
-function freshForm(){ return {date:today(),amount:"",category:CATEGORIES[0],mealType:"",restaurant:"",payMethodId:"",paidBy:myIndex??0,note:"",splitEvenly:false}; }
+function freshForm(){ return {type:"expense",date:today(),amount:"",category:CATEGORIES[0],mealType:"",restaurant:"",payMethodId:"",paidBy:myIndex??0,note:"",splitEvenly:false}; }
 function today(){ return new Date().toISOString().slice(0,10); }
 function thisMonthKey(){ const n=new Date();return `${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,"0")}`; }
 function genCode(){ return Math.random().toString(36).slice(2,8).toUpperCase(); }
@@ -338,12 +341,19 @@ function leaveRoom(){
 
 // ── Derived ───────────────────────────────────────────────────────────────────
 function recList(){ return Object.entries(records).map(([k,v])=>({...v,_key:k})).sort((a,b)=>b.date.localeCompare(a.date)); }
-function totalByPartner(){ const count=memberCount(); const t=Array(count).fill(0); recList().forEach(r=>{if(r.paidBy>=0&&r.paidBy<count) t[r.paidBy]=(t[r.paidBy]||0)+r.amount;}); return t; }
-function thisMonthSpent(){ return recList().filter(r=>r.date.slice(0,7)===thisMonthKey()).reduce((s,r)=>s+r.amount,0); }
-function catData(){ const m={}; recList().forEach(r=>{m[r.category]=(m[r.category]||0)+r.amount;}); return Object.entries(m).map(([n,v])=>({name:n,value:v})); }
-function barData(){ const mo={}; recList().forEach(r=>{const k=r.date.slice(0,7);mo[k]=(mo[k]||0)+r.amount;}); return Object.entries(mo).sort().slice(-6).map(([m,v])=>({name:m.slice(5)+"月",value:v})); }
-function calDays(){ const{y,m}=calMonth,first=new Date(y,m,1).getDay(),days=new Date(y,m+1,0).getDate(),g=[];for(let i=0;i<first;i++)g.push(null);for(let d=1;d<=days;d++){const ds=`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`,dr=recList().filter(r=>r.date===ds);g.push({d,dateStr:ds,recs:dr,total:dr.reduce((s,r)=>s+r.amount,0)});}return g;}
-function monthTotal(){ const{y,m}=calMonth;return recList().filter(r=>{const d=new Date(r.date);return d.getFullYear()===y&&d.getMonth()===m;}).reduce((s,r)=>s+r.amount,0);}
+// ── Income/expense split helpers (missing type ⇒ expense, backward-compatible) ──
+function isInc(r){ return r.type==="income"; }
+function expList(){ return recList().filter(r=>!isInc(r)); }
+function incList(){ return recList().filter(r=>isInc(r)); }
+function thisMonthIncome(){ return incList().filter(r=>r.date.slice(0,7)===thisMonthKey()).reduce((s,r)=>s+r.amount,0); }
+function incomeByPartner(){ const count=memberCount(); const t=Array(count).fill(0); incList().filter(r=>r.date.slice(0,7)===thisMonthKey()).forEach(r=>{if(r.paidBy>=0&&r.paidBy<count) t[r.paidBy]=(t[r.paidBy]||0)+r.amount;}); return t; }
+function catColor(r){ if(isInc(r)){ const i=INCOME_CATEGORIES.indexOf(r.category); return INCOME_CAT_COLORS[i]||"#8FAF98"; } const i=CATEGORIES.indexOf(r.category); return CAT_COLORS[i]||"#C4A89A"; }
+function totalByPartner(){ const count=memberCount(); const t=Array(count).fill(0); expList().forEach(r=>{if(r.paidBy>=0&&r.paidBy<count) t[r.paidBy]=(t[r.paidBy]||0)+r.amount;}); return t; }
+function thisMonthSpent(){ return expList().filter(r=>r.date.slice(0,7)===thisMonthKey()).reduce((s,r)=>s+r.amount,0); }
+function catData(){ const m={}; expList().forEach(r=>{m[r.category]=(m[r.category]||0)+r.amount;}); return Object.entries(m).map(([n,v])=>({name:n,value:v})); }
+function barData(){ const mo={}; expList().forEach(r=>{const k=r.date.slice(0,7);mo[k]=(mo[k]||0)+r.amount;}); return Object.entries(mo).sort().slice(-6).map(([m,v])=>({name:m.slice(5)+"月",value:v})); }
+function calDays(){ const{y,m}=calMonth,first=new Date(y,m,1).getDay(),days=new Date(y,m+1,0).getDate(),g=[];for(let i=0;i<first;i++)g.push(null);for(let d=1;d<=days;d++){const ds=`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`,dr=expList().filter(r=>r.date===ds);g.push({d,dateStr:ds,recs:dr,total:dr.reduce((s,r)=>s+r.amount,0)});}return g;}
+function monthTotal(){ const{y,m}=calMonth;return expList().filter(r=>{const d=new Date(r.date);return d.getFullYear()===y&&d.getMonth()===m;}).reduce((s,r)=>s+r.amount,0);}
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
 let toastTimer;
@@ -525,9 +535,11 @@ function renderApp(){
   const totalSalary=salaries.reduce((s,v)=>s+v,0);
   const totalSavingsGoal=savGoals.reduce((s,v)=>s+v,0);
   const totalLastSaved=lastSaveds.reduce((s,v)=>s+v,0);
+  const monthIncome=thisMonthIncome();           // logged income records this month
+  const incomeByP=incomeByPartner();             // per-member logged income this month
   const budgetPct=budget>0?Math.min(spent/budget*100,100):0;
   const budgetLeft=budget-spent,budgetOver=budgetLeft<0;
-  const proj=totalSalary-spent,savRate=totalSavingsGoal>0?Math.min(proj/totalSavingsGoal*100,100):0;
+  const proj=totalSalary+monthIncome-spent,savRate=totalSavingsGoal>0?Math.min(proj/totalSavingsGoal*100,100):0;
   const lastRate=totalSavingsGoal>0?(totalLastSaved/totalSavingsGoal*100).toFixed(0):0;
   const budgetBarColor=budgetOver?"var(--danger)":budgetPct>=80?"var(--warn)":"var(--sage)";
   const savColor=proj>=totalSavingsGoal?"var(--green)":proj>=0?"var(--warn)":"var(--danger)";
@@ -553,7 +565,7 @@ function renderApp(){
   </header>
 
   <main class="main">
-    ${tab==="home"  ? renderHome(tbp,total,spent,budget,budgets,salaries,savGoals,lastSaveds,budgetPct,budgetLeft,budgetOver,budgetBarColor,totalSalary,totalSavingsGoal,totalLastSaved,proj,savRate,lastRate,savColor) : ""}
+    ${tab==="home"  ? renderHome(tbp,total,spent,budget,budgets,salaries,savGoals,lastSaveds,budgetPct,budgetLeft,budgetOver,budgetBarColor,totalSalary,totalSavingsGoal,totalLastSaved,proj,savRate,lastRate,savColor,monthIncome,incomeByP) : ""}
     ${tab==="chart" ? renderChart() : ""}
     ${tab==="cal"   ? renderCal()   : ""}
     ${tab==="stat"  ? renderStat(tbp,total,salaries,savGoals,lastSaveds,budgets) : ""}
@@ -578,15 +590,17 @@ function renderApp(){
 }
 
 // ── Home ──────────────────────────────────────────────────────────────────────
-function renderHome(tbp,total,spent,budget,budgets,salaries,savGoals,lastSaveds,budgetPct,budgetLeft,budgetOver,budgetBarColor,totalSalary,totalSavingsGoal,totalLastSaved,proj,savRate,lastRate,savColor){
+function renderHome(tbp,total,spent,budget,budgets,salaries,savGoals,lastSaveds,budgetPct,budgetLeft,budgetOver,budgetBarColor,totalSalary,totalSavingsGoal,totalLastSaved,proj,savRate,lastRate,savColor,monthIncome,incomeByP){
   const count=memberCount();
-  const recs=recList(),bd=barData(),bdMax=bd.length?Math.max(...bd.map(d=>d.value)):1;
+  const recs=expList(),incs=incList(),bd=barData(),bdMax=bd.length?Math.max(...bd.map(d=>d.value)):1;
   const spentByP=tbp;
-  const projByP=salaries.map((s,i)=>s-(spentByP[i]||0));
+  const projByP=salaries.map((s,i)=>s+(incomeByP[i]||0)-(spentByP[i]||0));
   const savColorByP=projByP.map((p,i)=>p>=(savGoals[i]||0)?"var(--green)":p>=0?"var(--warn)":"var(--danger)");
 
   const finCardCombined=`
-    <div class="fin-row"><span class="fin-label">💴 合計收入</span><span class="fin-val">NT$ ${totalSalary.toLocaleString()}</span></div>
+    <div class="fin-row"><span class="fin-label">💴 固定月薪</span><span class="fin-val">NT$ ${totalSalary.toLocaleString()}</span></div>
+    <div class="fin-divider"></div>
+    <div class="fin-row"><span class="fin-label">💰 本月收入</span><span class="fin-val" style="color:var(--green)">＋ NT$ ${monthIncome.toLocaleString()}</span></div>
     <div class="fin-divider"></div>
     <div class="fin-row"><span class="fin-label">💸 本月支出</span><span class="fin-val" style="color:var(--clay)">－ NT$ ${spent.toLocaleString()}</span></div>
     <div class="fin-divider"></div>
@@ -613,12 +627,14 @@ function renderHome(tbp,total,spent,budget,budgets,salaries,savGoals,lastSaveds,
     <div style="display:grid;grid-template-columns:${count<=2?"1fr 1fr":count<=3?"1fr 1fr 1fr":"1fr 1fr"};gap:10px;margin-bottom:2px">
       ${names().map((n,i)=>{
         const sc=savColorByP[i]||"var(--sage)";
-        const sg=savGoals[i]||0, ls=lastSaveds[i]||0, sp=spentByP[i]||0, sal=salaries[i]||0;
+        const sg=savGoals[i]||0, ls=lastSaveds[i]||0, sp=spentByP[i]||0, sal=salaries[i]||0, inc=incomeByP[i]||0;
         const lRate=sg>0?(ls/sg*100).toFixed(0):0;
         return `<div style="background:var(--surface2);border-radius:12px;padding:12px;border-left:3px solid var(--clay)">
           <div style="font-size:11px;color:var(--sub);margin-bottom:6px">${emojis()[i]||"👤"} ${n}</div>
-          <div style="font-size:10px;color:var(--mute)">收入</div>
+          <div style="font-size:10px;color:var(--mute)">月薪</div>
           <div style="font-size:13px;font-weight:700;margin-bottom:4px">NT$ ${sal.toLocaleString()}</div>
+          <div style="font-size:10px;color:var(--mute)">本月收入</div>
+          <div style="font-size:12px;font-weight:600;color:var(--green);margin-bottom:4px">＋ NT$ ${inc.toLocaleString()}</div>
           <div style="font-size:10px;color:var(--mute)">支出</div>
           <div style="font-size:12px;font-weight:600;color:var(--clay);margin-bottom:4px">－ NT$ ${sp.toLocaleString()}</div>
           <div style="height:1px;background:var(--border);margin:5px 0"></div>
@@ -717,7 +733,21 @@ function renderHome(tbp,total,spent,budget,budgets,salaries,savGoals,lastSaveds,
         <button class="del-btn" data-key="${r._key}">×</button>
       </div>`;
     }).join("")}
-  </div>`;
+  </div>
+
+  ${incs.length?`<div class="card">
+    <div class="card-title">收入明細</div>
+    ${incs.map(r=>`<div class="rec-row">
+        <div class="rec-dot" style="background:${catColor(r)}"></div>
+        <div style="flex:1">
+          <div class="rec-note">${r.note||r.category.replace(/^\S+\s/,"")}</div>
+          <div class="rec-meta">${r.date} · ${r.category.split(" ")[0]} · ${label(r.paidBy)}</div>
+        </div>
+        <div class="rec-amt" style="color:var(--green)">＋ NT$ ${r.amount.toLocaleString()}</div>
+        <button class="edit-rec-btn" data-key="${r._key}" title="編輯">✎</button>
+        <button class="del-btn" data-key="${r._key}">×</button>
+      </div>`).join("")}
+  </div>`:""}`;
 }
 
 // ── Chart ─────────────────────────────────────────────────────────────────────
@@ -740,7 +770,7 @@ function renderChart(){
 // ── Calendar ──────────────────────────────────────────────────────────────────
 function renderCal(){
   const{y,m}=calMonth,days=calDays(),mt=monthTotal();
-  const mtByP=[0,1].map(i=>recList().filter(r=>{const d=new Date(r.date);return d.getFullYear()===y&&d.getMonth()===m&&r.paidBy===i;}).reduce((s,r)=>s+r.amount,0));
+  const mtByP=[0,1].map(i=>expList().filter(r=>{const d=new Date(r.date);return d.getFullYear()===y&&d.getMonth()===m&&r.paidBy===i;}).reduce((s,r)=>s+r.amount,0));
   const selRecs=calSel?(days.find(d=>d?.dateStr===calSel)?.recs||[]):[];
   return `
   <div class="card">
@@ -822,7 +852,7 @@ function renderStat(tbp,total,salaries,savGoals,lastSaveds,budgets){
     </div>
   </div>
   ${names().map((_,pi)=>{
-    const recs=recList().filter(r=>r.paidBy===pi);
+    const recs=expList().filter(r=>r.paidBy===pi);
     if(!recs.length) return `<div class="card"><div class="card-title">${label(pi)}</div><div class="empty">還沒有支出</div></div>`;
     const map={}; recs.forEach(r=>{map[r.category]=(map[r.category]||0)+r.amount;});
     return `<div class="card"><div class="card-title">${label(pi)} 的支出</div>${Object.entries(map).map(([cat,amt])=>`<div class="rec-row"><div class="rec-dot" style="background:${CAT_COLORS[CATEGORIES.indexOf(cat)]||"#C4A89A"}"></div><span style="flex:1;font-size:13px">${cat}</span><span class="rec-amt">NT$ ${amt.toLocaleString()}</span></div>`).join("")}</div>`;
@@ -839,9 +869,13 @@ function getRestaurantSuggestions(){
 
 function renderAddModal(){
   const{date,amount,category,mealType,restaurant,note,splitEvenly}=form;
+  const type=form.type||"expense";
+  const isInc=type==="income";
+  const CATS=isInc?INCOME_CATEGORIES:CATEGORIES;
+  const CCOLORS=isInc?INCOME_CAT_COLORS:CAT_COLORS;
   const paidBy=form.paidBy??myIndex;
-  const isFoodCat=FOOD_CATS.includes(category);
-  const isMealCat=category==="🍽 餐點";
+  const isFoodCat=!isInc&&FOOD_CATS.includes(category);
+  const isMealCat=!isInc&&category==="🍽 餐點";
   const suggestions=getRestaurantSuggestions();
 
   return `<div class="overlay" id="overlay"><div class="modal-card">
@@ -849,7 +883,13 @@ function renderAddModal(){
       <div class="modal-handle" style="margin:0"></div>
       <button id="btn-modal-close" style="background:none;border:none;font-size:22px;color:var(--mute);cursor:pointer;padding:0 4px;line-height:1">×</button>
     </div>
-    <div class="modal-title" style="margin-top:12px">新增支出</div>
+    <div class="modal-title" style="margin-top:12px">${isInc?"新增收入":"新增支出"}</div>
+
+    <!-- Expense / Income type toggle -->
+    <div style="display:flex;background:var(--surface2);border-radius:10px;padding:3px;gap:3px;margin-bottom:14px">
+      <button id="type-expense" style="flex:1;border:none;cursor:pointer;border-radius:8px;padding:10px 4px;font-size:13px;font-weight:700;transition:all .2s;${!isInc?"background:var(--clay);color:var(--surface)":"background:transparent;color:var(--sub)"}">💸 支出</button>
+      <button id="type-income" style="flex:1;border:none;cursor:pointer;border-radius:8px;padding:10px 4px;font-size:13px;font-weight:700;transition:all .2s;${isInc?"background:var(--green);color:var(--surface)":"background:transparent;color:var(--sub)"}">💰 收入</button>
+    </div>
 
     <div style="display:flex;gap:10px;margin-bottom:12px;align-items:center;background:var(--surface2);border-radius:12px;border:1.5px solid var(--border);padding:10px 14px;">
       <div style="flex:1;min-width:0">
@@ -864,17 +904,17 @@ function renderAddModal(){
     </div>
 
     <div class="field"><label>分類</label><div class="cat-grid">
-      ${CATEGORIES.map((cat,i)=>`<button class="cat-chip" data-cat="${cat}" style="${category===cat?`background:${CAT_COLORS[i]};color:var(--surface);border-color:${CAT_COLORS[i]}`:""}">${cat}</button>`).join("")}
+      ${CATS.map((cat,i)=>`<button class="cat-chip" data-cat="${cat}" style="${category===cat?`background:${CCOLORS[i]};color:var(--surface);border-color:${CCOLORS[i]}`:""}">${cat}</button>`).join("")}
     </div></div>
 
-    <!-- Meal type sub-category (only for 餐點) -->
+    <!-- Meal type sub-category (only for 餐點, expense) -->
     ${isMealCat?`<div class="field" id="meal-section"><label>餐別</label>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         ${MEAL_TYPES.map(mt=>`<button class="meal-btn" data-meal="${mt}" style="border:1.5px solid ${mealType===mt?"var(--clay)":"var(--border)"};border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;background:${mealType===mt?"var(--clay)":"var(--surface2)"};color:${mealType===mt?"var(--surface)":"var(--sub)"};transition:all .15s">${mt}</button>`).join("")}
       </div>
     </div>`:""}
 
-    <!-- Restaurant (only for 餐點 and 飲料) -->
+    <!-- Restaurant (only for 餐點 and 飲料, expense) -->
     ${isFoodCat?`<div class="field" id="restaurant-section">
       <label>餐廳／店名 <span style="color:var(--mute);font-weight:400">（選填）</span></label>
       <div style="position:relative">
@@ -889,8 +929,8 @@ function renderAddModal(){
       </div>`:""}
     </div>`:""}
 
-    <!-- Split toggle -->
-    <div class="field">
+    <!-- Split toggle (expense only) -->
+    ${!isInc?`<div class="field">
       <label>記帳方式</label>
       <div style="display:flex;background:var(--surface2);border-radius:10px;padding:3px;gap:3px">
         <button id="split-no" style="flex:1;border:none;cursor:pointer;border-radius:8px;padding:9px 4px;font-size:13px;font-weight:600;transition:all .2s;${!splitEvenly?"background:var(--clay);color:var(--surface)":"background:transparent;color:var(--sub)"}">一人記帳</button>
@@ -899,33 +939,36 @@ function renderAddModal(){
       <div id="split-preview" style="display:${splitEvenly&&amount?"flex":"none"};justify-content:space-between;margin-top:8px;padding:8px 12px;background:var(--surface2);border-radius:8px;font-size:12px;color:var(--sub)">
         ${splitEvenly&&amount?`<span>${label(0)}　<b style="color:var(--text)">NT$ ${(+amount/2).toLocaleString(undefined,{maximumFractionDigits:0})}</b></span><span>${label(1)}　<b style="color:var(--text)">NT$ ${(+amount/2).toLocaleString(undefined,{maximumFractionDigits:0})}</b></span>`:""}
       </div>
-    </div>
+    </div>`:""}
 
-    <div class="field" id="paid-section" style="${splitEvenly?"display:none":""}"><label>誰付錢？</label>
+    <div class="field" id="paid-section" style="${(!isInc&&splitEvenly)?"display:none":""}"><label>${isInc?"誰的收入？":"誰付錢？"}</label>
       <div style="display:flex;gap:10px">
         ${names().map((n,i)=>`<button class="paid-btn" data-paid="${i}" style="flex:1;border:1.5px solid ${paidBy===i?(i===0?"var(--rose)":"var(--sage)"):"var(--border)"};border-radius:10px;padding:10px;background:${paidBy===i?(i===0?"var(--rose)":"var(--sage)"):"var(--surface2)"};cursor:pointer;font-size:13px;color:${paidBy===i?"var(--surface)":"var(--sub)"};">${emojis()[i]} ${n}</button>`).join("")}
       </div>
     </div>
 
-    ${settings.showPayMethod&&payMethods().length>0?`<div class="field">
+    ${!isInc&&settings.showPayMethod&&payMethods().length>0?`<div class="field">
       <label>付款方式 <span style="color:var(--mute);font-weight:400">（選填）</span></label>
       <div style="display:flex;flex-wrap:wrap;gap:6px">
         ${payMethods().map(pm=>`<button class="pm-chip" data-pmid="${pm.id}" style="border:1.5px solid ${form.payMethodId===pm.id?"var(--clay)":"var(--border)"};border-radius:20px;padding:5px 12px;font-size:12px;cursor:pointer;background:${form.payMethodId===pm.id?"var(--clay)":"var(--surface2)"};color:${form.payMethodId===pm.id?"var(--surface)":"var(--sub)"};transition:all .15s">${pm.name}</button>`).join("")}
       </div>
     </div>`:""}
     <div class="field"><label>備註</label><input id="f-note" placeholder="備忘…" value="${note}"/></div>
-    <button class="submit-btn" id="btn-submit">${splitEvenly?"各記一半 ÷2":"記帳"}</button>
+    <button class="submit-btn" id="btn-submit" style="${isInc?"background:var(--green)":""}">${isInc?"記收入":(splitEvenly?"各記一半 ÷2":"記帳")}</button>
   </div></div>`;
 }
 
 function renderEditModal(){
   const r=records[editKey]; if(!r) return "";
   const{date,amount,category,paidBy,note,mealType,restaurant}=r;
-  const isFoodCat=FOOD_CATS.includes(category);
-  const isMealCat=category==="🍽 餐點";
+  const isInc=r.type==="income";
+  const CATS=isInc?INCOME_CATEGORIES:CATEGORIES;
+  const CCOLORS=isInc?INCOME_CAT_COLORS:CAT_COLORS;
+  const isFoodCat=!isInc&&FOOD_CATS.includes(category);
+  const isMealCat=!isInc&&category==="🍽 餐點";
   const suggestions=getRestaurantSuggestions();
   return `<div class="overlay" id="overlay"><div class="modal-card">
-    <div class="modal-handle"></div><div class="modal-title">編輯支出</div>
+    <div class="modal-handle"></div><div class="modal-title">${isInc?"編輯收入":"編輯支出"}</div>
     <div style="display:flex;gap:10px;margin-bottom:12px;align-items:center;background:var(--surface2);border-radius:12px;border:1.5px solid var(--border);padding:10px 14px;">
       <div style="flex:1;min-width:0">
         <div style="font-size:10px;color:var(--mute);margin-bottom:2px;letter-spacing:.5px">📅 日期</div>
@@ -938,7 +981,7 @@ function renderEditModal(){
       </div>
     </div>
     <div class="field"><label>分類</label><div class="cat-grid">
-      ${CATEGORIES.map((cat,i)=>`<button class="cat-chip e-cat" data-cat="${cat}" style="${category===cat?`background:${CAT_COLORS[i]};color:var(--surface);border-color:${CAT_COLORS[i]}`:""}">${cat}</button>`).join("")}
+      ${CATS.map((cat,i)=>`<button class="cat-chip e-cat" data-cat="${cat}" style="${category===cat?`background:${CCOLORS[i]};color:var(--surface);border-color:${CCOLORS[i]}`:""}">${cat}</button>`).join("")}
     </div></div>
     ${isMealCat?`<div class="field"><label>餐別</label>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
@@ -953,13 +996,13 @@ function renderEditModal(){
         ${suggestions.slice(0,6).map(s=>`<button class="e-rest-suggest" data-rest="${s}" style="border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:11px;cursor:pointer;background:${(restaurant||"")===s?"var(--clay)":"var(--surface2)"};color:${(restaurant||"")===s?"var(--surface)":"var(--sub)"};transition:all .15s">${s}</button>`).join("")}
       </div>`:""}
     </div>`:""}
-    <div class="field"><label>誰付錢？</label>
+    <div class="field"><label>${isInc?"誰的收入？":"誰付錢？"}</label>
       <div style="display:flex;gap:10px">
         ${names().map((n,i)=>`<button class="e-paid-btn" data-paid="${i}" style="flex:1;border:1.5px solid ${paidBy===i?(i===0?"var(--rose)":"var(--sage)"):"var(--border)"};border-radius:10px;padding:10px;background:${paidBy===i?(i===0?"var(--rose)":"var(--sage)"):"var(--surface2)"};cursor:pointer;font-size:13px;color:${paidBy===i?"var(--surface)":"var(--sub)"};">${emojis()[i]} ${n}</button>`).join("")}
       </div>
     </div>
     <div class="field"><label>備註</label><input id="e-note" placeholder="備忘…" value="${note||""}"/></div>
-    <button class="submit-btn" id="btn-edit-save">儲存修改</button>
+    <button class="submit-btn" id="btn-edit-save" style="${isInc?"background:var(--green)":""}">儲存修改</button>
   </div></div>`;
 }
 
@@ -1213,6 +1256,13 @@ function bindAppEvents(){
 
     const closeBtn=document.getElementById("btn-modal-close");
     if(closeBtn) closeBtn.onclick=()=>{modal=null;render();};
+
+    // Expense / Income type toggle — full re-render (category set & fields change)
+    const typeExp=document.getElementById("type-expense");
+    const typeInc=document.getElementById("type-income");
+    if(typeExp) typeExp.onclick=()=>{ if(form.type!=="expense"){ form.type="expense"; form.category=CATEGORIES[0]; form.mealType=""; form.restaurant=""; form.payMethodId=""; form.splitEvenly=false; render(); } };
+    if(typeInc) typeInc.onclick=()=>{ if(form.type!=="income"){ form.type="income"; form.category=INCOME_CATEGORIES[0]; form.mealType=""; form.restaurant=""; form.payMethodId=""; form.splitEvenly=false; render(); } };
+
     document.getElementById("f-date").onchange=e=>{form.date=e.target.value;};
     document.getElementById("f-amount").oninput=e=>{
       form.amount=e.target.value;
@@ -1229,22 +1279,23 @@ function bindAppEvents(){
     const fRest=document.getElementById("f-restaurant");
     if(fRest) fRest.oninput=e=>{form.restaurant=e.target.value;};
 
-    // Category chips — needs re-render only because sub-fields (meal/restaurant) may appear/disappear
+    // Category chips — type-aware colors; sub-fields (meal/restaurant) may appear/disappear
     document.querySelectorAll(".cat-chip").forEach((b,_,all)=>{
       b.onclick=()=>{
-        const i=CATEGORIES.indexOf(b.dataset.cat);
+        const isInc=form.type==="income";
+        const CC=isInc?INCOME_CAT_COLORS:CAT_COLORS;
         form.category=b.dataset.cat; form.mealType=""; form.restaurant="";
         all.forEach((x,xi)=>{
           const active=x.dataset.cat===form.category;
-          x.style.background=active?CAT_COLORS[xi]:"var(--surface2)";
+          x.style.background=active?CC[xi]:"var(--surface2)";
           x.style.color=active?"var(--surface)":"var(--sub)";
-          x.style.borderColor=active?CAT_COLORS[xi]:"var(--border)";
+          x.style.borderColor=active?CC[xi]:"var(--border)";
         });
-        // show/hide meal-type and restaurant sections without full re-render
+        // show/hide meal-type and restaurant sections (expense only)
         const mealSec=document.getElementById("meal-section");
         const restSec=document.getElementById("restaurant-section");
-        const isMeal=form.category==="🍽 餐點";
-        const isFood=["🍽 餐點","🧋 飲料"].includes(form.category);
+        const isMeal=!isInc&&form.category==="🍽 餐點";
+        const isFood=!isInc&&["🍽 餐點","🧋 飲料"].includes(form.category);
         if(mealSec) mealSec.style.display=isMeal?"block":"none";
         if(restSec) restSec.style.display=isFood?"block":"none";
       };
@@ -1328,21 +1379,25 @@ function bindAppEvents(){
     document.getElementById("btn-submit").onclick=async()=>{
       if(!form.amount||isNaN(+form.amount)) return showToast("請輸入正確金額");
       const btn=document.getElementById("btn-submit");
-      btn.disabled=true; btn.textContent="記帳中…";
+      btn.disabled=true; btn.textContent=form.type==="income"?"記錄中…":"記帳中…";
       const{date,category,note,splitEvenly}=form;
       const total=+form.amount;
-      if(splitEvenly){
+      if(form.type==="income"){
+        // Income: single record, no meal/restaurant/payMethod/split
+        await fbAdd({type:"income",date,amount:total,category,mealType:"",restaurant:"",payMethodId:"",paidBy:form.paidBy??myIndex,note});
+        showToast("✦ 收入已記錄");
+      } else if(splitEvenly){
         // Write two separate records, one per person, each half the amount
         const half=Math.round(total/2*100)/100;
         const remainder=Math.round((total-half)*100)/100;
         const mealType=form.mealType||"", restaurant=form.restaurant||"", payMethodId=form.payMethodId||"";
         await Promise.all([
-          fbAdd({date,amount:half,category,mealType,restaurant,payMethodId,paidBy:0,note:note||(names()[0]+" 攤分"),splitFrom:true}),
-          fbAdd({date,amount:remainder,category,mealType,restaurant,payMethodId,paidBy:1,note:note||(names()[1]+" 攤分"),splitFrom:true})
+          fbAdd({type:"expense",date,amount:half,category,mealType,restaurant,payMethodId,paidBy:0,note:note||(names()[0]+" 攤分"),splitFrom:true}),
+          fbAdd({type:"expense",date,amount:remainder,category,mealType,restaurant,payMethodId,paidBy:1,note:note||(names()[1]+" 攤分"),splitFrom:true})
         ]);
         showToast(`✦ 已各記 NT$ ${half.toLocaleString()} 和 NT$ ${remainder.toLocaleString()}`);
       } else {
-        await fbAdd({date,amount:total,category,mealType:form.mealType||"",restaurant:form.restaurant||"",payMethodId:form.payMethodId||"",paidBy:form.paidBy??myIndex,note});
+        await fbAdd({type:"expense",date,amount:total,category,mealType:form.mealType||"",restaurant:form.restaurant||"",payMethodId:form.payMethodId||"",paidBy:form.paidBy??myIndex,note});
         showToast("✦ 記帳成功");
       }
       modal=null; form=freshForm(); render();
@@ -1406,7 +1461,12 @@ function bindAppEvents(){
       const btn=document.getElementById("btn-edit-save");
       btn.disabled=true; btn.textContent="儲存中…";
       const{category,paidBy,mealType}=records[editKey];
-      await fbUpdate(editKey,{date,amount,category,mealType:mealType||"",restaurant,paidBy,note});
+      const type=records[editKey].type||"expense";
+      if(type==="income"){
+        await fbUpdate(editKey,{date,amount,category,mealType:"",restaurant:"",paidBy,note,type:"income"});
+      } else {
+        await fbUpdate(editKey,{date,amount,category,mealType:mealType||"",restaurant,paidBy,note,type:"expense"});
+      }
       modal=null; editKey=null; render(); showToast("✦ 已更新");
     };
   }
