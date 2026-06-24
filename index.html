@@ -352,7 +352,7 @@ function totalByPartner(){ const count=memberCount(); const t=Array(count).fill(
 function thisMonthSpent(){ return expList().filter(r=>r.date.slice(0,7)===thisMonthKey()).reduce((s,r)=>s+r.amount,0); }
 function catData(){ const m={}; expList().forEach(r=>{m[r.category]=(m[r.category]||0)+r.amount;}); return Object.entries(m).map(([n,v])=>({name:n,value:v})); }
 function barData(){ const mo={}; expList().forEach(r=>{const k=r.date.slice(0,7);mo[k]=(mo[k]||0)+r.amount;}); return Object.entries(mo).sort().slice(-6).map(([m,v])=>({name:m.slice(5)+"月",value:v})); }
-function calDays(){ const{y,m}=calMonth,first=new Date(y,m,1).getDay(),days=new Date(y,m+1,0).getDate(),g=[];for(let i=0;i<first;i++)g.push(null);for(let d=1;d<=days;d++){const ds=`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`,dr=expList().filter(r=>r.date===ds);g.push({d,dateStr:ds,recs:dr,total:dr.reduce((s,r)=>s+r.amount,0)});}return g;}
+function calDays(){ const{y,m}=calMonth,first=new Date(y,m,1).getDay(),days=new Date(y,m+1,0).getDate(),g=[];for(let i=0;i<first;i++)g.push(null);for(let d=1;d<=days;d++){const ds=`${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`,dr=expList().filter(r=>r.date===ds),ir=incList().filter(r=>r.date===ds);g.push({d,dateStr:ds,recs:dr,total:dr.reduce((s,r)=>s+r.amount,0),incRecs:ir,incTotal:ir.reduce((s,r)=>s+r.amount,0)});}return g;}
 function monthTotal(){ const{y,m}=calMonth;return expList().filter(r=>{const d=new Date(r.date);return d.getFullYear()===y&&d.getMonth()===m;}).reduce((s,r)=>s+r.amount,0);}
 
 // ── Toast ─────────────────────────────────────────────────────────────────────
@@ -592,7 +592,7 @@ function renderApp(){
 // ── Home ──────────────────────────────────────────────────────────────────────
 function renderHome(tbp,total,spent,budget,budgets,salaries,savGoals,lastSaveds,budgetPct,budgetLeft,budgetOver,budgetBarColor,totalSalary,totalSavingsGoal,totalLastSaved,proj,savRate,lastRate,savColor,monthIncome,incomeByP){
   const count=memberCount();
-  const recs=expList(),incs=incList(),bd=barData(),bdMax=bd.length?Math.max(...bd.map(d=>d.value)):1;
+  const allRecs=recList(),bd=barData(),bdMax=bd.length?Math.max(...bd.map(d=>d.value)):1;
   const spentByP=tbp;
   const projByP=salaries.map((s,i)=>s+(incomeByP[i]||0)-(spentByP[i]||0));
   const savColorByP=projByP.map((p,i)=>p>=(savGoals[i]||0)?"var(--green)":p>=0?"var(--warn)":"var(--danger)");
@@ -718,60 +718,63 @@ function renderHome(tbp,total,spent,budget,budgets,salaries,savGoals,lastSaveds,
   ${bd.length>1?`<div class="card"><div class="card-title">月支出趨勢</div><div class="mini-bar-wrap">${bd.map(d=>`<div class="mini-bar-col"><div class="mini-bar" style="height:${Math.round(d.value/bdMax*60)}px"></div><div class="mini-bar-label">${d.name}</div></div>`).join("")}</div></div>`:""}
 
   <div class="card">
-    <div class="card-title">支出明細</div>
-    ${recs.length===0?`<div class="empty">還沒有記錄，快來記第一筆！</div>`:""}
-    ${recs.map(r=>{
-      const mine=r.paidBy===myIndex;
+    <div class="card-title">收支明細</div>
+    ${allRecs.length===0?`<div class="empty">還沒有記錄，快來記第一筆！</div>`:""}
+    ${allRecs.map(r=>{
+      const inc=isInc(r);
       return `<div class="rec-row">
-        <div class="rec-dot" style="background:${CAT_COLORS[CATEGORIES.indexOf(r.category)]||"#C4A89A"}"></div>
+        <div class="rec-dot" style="background:${catColor(r)}"></div>
         <div style="flex:1">
           <div class="rec-note">${r.note||r.category.replace(/^\S+\s/,"")}</div>
-          <div class="rec-meta">${r.date} · ${r.category.split(" ")[0]}${r.mealType?" "+r.mealType.split(" ")[0]:""}${r.restaurant?" · "+r.restaurant:""} · ${label(r.paidBy)}</div>
+          <div class="rec-meta">${r.date} · ${r.category.split(" ")[0]}${(!inc&&r.mealType)?" "+r.mealType.split(" ")[0]:""}${(!inc&&r.restaurant)?" · "+r.restaurant:""} · ${label(r.paidBy)}</div>
         </div>
-        <div class="rec-amt">NT$ ${r.amount.toLocaleString()}</div>
+        <div class="rec-amt" style="color:${inc?"var(--green)":"var(--clay)"}">${inc?"＋":"－"} NT$ ${r.amount.toLocaleString()}</div>
         <button class="edit-rec-btn" data-key="${r._key}" title="編輯">✎</button>
         <button class="del-btn" data-key="${r._key}">×</button>
       </div>`;
     }).join("")}
-  </div>
-
-  ${incs.length?`<div class="card">
-    <div class="card-title">收入明細</div>
-    ${incs.map(r=>`<div class="rec-row">
-        <div class="rec-dot" style="background:${catColor(r)}"></div>
-        <div style="flex:1">
-          <div class="rec-note">${r.note||r.category.replace(/^\S+\s/,"")}</div>
-          <div class="rec-meta">${r.date} · ${r.category.split(" ")[0]} · ${label(r.paidBy)}</div>
-        </div>
-        <div class="rec-amt" style="color:var(--green)">＋ NT$ ${r.amount.toLocaleString()}</div>
-        <button class="edit-rec-btn" data-key="${r._key}" title="編輯">✎</button>
-        <button class="del-btn" data-key="${r._key}">×</button>
-      </div>`).join("")}
-  </div>`:""}`;
+  </div>`;
 }
 
 // ── Chart ─────────────────────────────────────────────────────────────────────
+function incCatData(){ const m={}; incList().forEach(r=>{m[r.category]=(m[r.category]||0)+r.amount;}); return Object.entries(m).map(([n,v])=>({name:n,value:v})).sort((a,b)=>b.value-a.value); }
 function renderChart(){
   const cd=catData();
-  if(!cd.length) return `<div class="card"><div class="card-title">分類佔比</div><div class="empty">尚無資料</div></div>`;
+  const incd=incCatData();
+  const incTotal=incd.reduce((s,d)=>s+d.value,0);
+  // Income breakdown card (shown when there is any income)
+  const incomeCard=incd.length?`<div class="card">
+    <div class="card-title">收入分類</div>
+    <div style="text-align:center;margin-bottom:8px">
+      <div style="font-size:11px;color:var(--mute)">本期總收入</div>
+      <div style="font-family:'Noto Serif TC',serif;font-size:22px;font-weight:700;color:var(--green)">NT$ ${incTotal.toLocaleString()}</div>
+    </div>
+    <div style="border-top:1px solid var(--surface2);padding-top:10px;margin-top:4px">
+      ${incd.map(d=>{const i=INCOME_CATEGORIES.indexOf(d.name);return `<div class="legend-row"><span class="legend-dot" style="background:${INCOME_CAT_COLORS[i]||"#8FAF98"}"></span><span class="legend-label">${d.name}</span><span class="legend-val" style="color:var(--green)">NT$ ${d.value.toLocaleString()}</span></div>`;}).join("")}
+    </div></div>`:"";
+  if(!cd.length) return (incomeCard||`<div class="card"><div class="card-title">分類佔比</div><div class="empty">尚無資料</div></div>`);
   const total=cd.reduce((s,d)=>s+d.value,0);
   let paths="",offset=0; const r=70,cx=110,cy=90,circ=2*Math.PI*r;
   cd.forEach((d,i)=>{const pct=d.value/total,dash=pct*circ,gap=circ-dash;paths+=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${CAT_COLORS[i%CAT_COLORS.length]}" stroke-width="28" stroke-dasharray="${dash} ${gap}" stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})"/>`;offset+=dash;});
-  return `<div class="card"><div class="card-title">分類佔比</div>
+  return `<div class="card"><div class="card-title">支出分類佔比</div>
     <svg width="100%" viewBox="0 0 220 180" style="display:block;margin:0 auto">${paths}
       <text x="${cx}" y="${cy+5}" text-anchor="middle" font-size="11" fill="var(--sub)">總支出</text>
       <text x="${cx}" y="${cy+20}" text-anchor="middle" font-size="13" font-weight="700" fill="var(--text)">NT$ ${total.toLocaleString()}</text>
     </svg>
     <div style="border-top:1px solid var(--surface2);padding-top:10px;margin-top:4px">
       ${cd.map((d,i)=>`<div class="legend-row"><span class="legend-dot" style="background:${CAT_COLORS[i%CAT_COLORS.length]}"></span><span class="legend-label">${d.name}</span><span class="legend-val">NT$ ${d.value.toLocaleString()}</span></div>`).join("")}
-    </div></div>`;
+    </div></div>
+    ${incomeCard}`;
 }
 
 // ── Calendar ──────────────────────────────────────────────────────────────────
 function renderCal(){
   const{y,m}=calMonth,days=calDays(),mt=monthTotal();
+  const mtInc=incList().filter(r=>{const d=new Date(r.date);return d.getFullYear()===y&&d.getMonth()===m;}).reduce((s,r)=>s+r.amount,0);
   const mtByP=[0,1].map(i=>expList().filter(r=>{const d=new Date(r.date);return d.getFullYear()===y&&d.getMonth()===m&&r.paidBy===i;}).reduce((s,r)=>s+r.amount,0));
-  const selRecs=calSel?(days.find(d=>d?.dateStr===calSel)?.recs||[]):[];
+  const selDay=calSel?days.find(d=>d?.dateStr===calSel):null;
+  const selRecs=selDay?(selDay.recs||[]):[];
+  const selInc=selDay?(selDay.incRecs||[]):[];
   return `
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
@@ -779,7 +782,7 @@ function renderCal(){
       <div style="text-align:center">
         <div style="font-family:'Noto Serif TC',serif;font-size:16px;font-weight:700">${y}年 ${m+1}月</div>
         ${calView==="combined"
-          ? `<div style="font-size:11px;color:var(--sub);margin-top:2px">合計 NT$ ${mt.toLocaleString()}</div>`
+          ? `<div style="font-size:11px;margin-top:2px;display:flex;gap:8px;justify-content:center"><span style="color:var(--clay)">支 NT$ ${mt.toLocaleString()}</span>${mtInc>0?`<span style="color:var(--green)">收 NT$ ${mtInc.toLocaleString()}</span>`:""}</div>`
           : `<div style="font-size:11px;margin-top:2px;display:flex;gap:8px;justify-content:center">
                <span style="color:var(--rose)">${emojis()[0]} NT$ ${mtByP[0].toLocaleString()}</span>
                <span style="color:var(--sage)">${emojis()[1]} NT$ ${mtByP[1].toLocaleString()}</span>
@@ -800,18 +803,21 @@ function renderCal(){
         const byP=[0,1].map(i=>c.recs.filter(r=>r.paidBy===i).reduce((s,r)=>s+r.amount,0));
         const fmt=v=>v>=1000?Math.round(v/100)/10+"k":v;
         let dot="", hasAmt=false;
-        if(calView==="combined"&&c.total>0){
-          dot=`<div style="display:flex;gap:2px;justify-content:center;margin-top:1px">
-            ${byP[0]>0?`<span style="font-size:7px;color:var(--rose);font-weight:700;line-height:1">${fmt(byP[0])}</span>`:""}
-            ${byP[0]>0&&byP[1]>0?`<span style="font-size:7px;color:var(--mute)">·</span>`:""}
-            ${byP[1]>0?`<span style="font-size:7px;color:var(--sage);font-weight:700;line-height:1">${fmt(byP[1])}</span>`:""}
+        if(calView==="combined"&&(c.total>0||c.incTotal>0)){
+          dot=`<div style="display:flex;flex-direction:column;align-items:center;gap:1px;margin-top:1px">
+            ${(byP[0]>0||byP[1]>0)?`<div style="display:flex;gap:2px;justify-content:center">
+              ${byP[0]>0?`<span style="font-size:7px;color:var(--rose);font-weight:700;line-height:1">${fmt(byP[0])}</span>`:""}
+              ${byP[0]>0&&byP[1]>0?`<span style="font-size:7px;color:var(--mute)">·</span>`:""}
+              ${byP[1]>0?`<span style="font-size:7px;color:var(--sage);font-weight:700;line-height:1">${fmt(byP[1])}</span>`:""}
+            </div>`:""}
+            ${c.incTotal>0?`<span style="font-size:7px;color:var(--green);font-weight:700;line-height:1">+${fmt(c.incTotal)}</span>`:""}
           </div>`; hasAmt=true;
         } else if(calView==="p0"&&byP[0]>0){
           dot=`<span style="font-size:7px;color:var(--rose);font-weight:700;line-height:1;display:block;text-align:center;margin-top:1px">${fmt(byP[0])}</span>`; hasAmt=true;
         } else if(calView==="p1"&&byP[1]>0){
           dot=`<span style="font-size:7px;color:var(--sage);font-weight:700;line-height:1;display:block;text-align:center;margin-top:1px">${fmt(byP[1])}</span>`; hasAmt=true;
         }
-        const showCell=calView==="combined"?c.total>0:calView==="p0"?byP[0]>0:byP[1]>0;
+        const showCell=calView==="combined"?(c.total>0||c.incTotal>0):calView==="p0"?byP[0]>0:byP[1]>0;
         return `<div class="cal-cell ${showCell?"has-rec":""} ${calSel===c.dateStr?"selected":""}" data-date="${c.dateStr}" style="padding:2px 1px;">
           <span class="cal-day">${c.d}</span>
           ${dot}
@@ -820,8 +826,10 @@ function renderCal(){
     </div>
   </div>
   ${(()=>{
-    const filtRecs=calView==="p0"?selRecs.filter(r=>r.paidBy===0):calView==="p1"?selRecs.filter(r=>r.paidBy===1):selRecs;
-    return filtRecs.length?`<div class="card"><div class="card-title">${calSel}</div>${filtRecs.map(r=>`<div class="rec-row"><div class="rec-dot" style="background:${CAT_COLORS[CATEGORIES.indexOf(r.category)]||"#C4A89A"}"></div><div style="flex:1"><div class="rec-note">${r.note||r.category}</div><div class="rec-meta">${label(r.paidBy)}</div></div><div class="rec-amt">NT$ ${r.amount.toLocaleString()}</div></div>`).join("")}</div>`:"";
+    const exp=calView==="p0"?selRecs.filter(r=>r.paidBy===0):calView==="p1"?selRecs.filter(r=>r.paidBy===1):selRecs;
+    const inc=calView==="p0"?selInc.filter(r=>r.paidBy===0):calView==="p1"?selInc.filter(r=>r.paidBy===1):selInc;
+    const rows=[...exp.map(r=>({r,isI:false})),...inc.map(r=>({r,isI:true}))];
+    return rows.length?`<div class="card"><div class="card-title">${calSel}</div>${rows.map(({r,isI})=>`<div class="rec-row"><div class="rec-dot" style="background:${catColor(r)}"></div><div style="flex:1"><div class="rec-note">${r.note||r.category}</div><div class="rec-meta">${r.category.split(" ")[0]} · ${label(r.paidBy)}</div></div><div class="rec-amt" style="color:${isI?"var(--green)":"var(--clay)"}">${isI?"＋":"－"} NT$ ${r.amount.toLocaleString()}</div></div>`).join("")}</div>`:"";
   })()}`;
 }
 
@@ -831,6 +839,7 @@ function renderStat(tbp,total,salaries,savGoals,lastSaveds,budgets){
   const COLORS=["var(--rose)","var(--sage)","var(--clay)","var(--slate)","var(--lav)","var(--wheat)","var(--mist)","var(--blush)"];
   const gridCols=count<=2?"1fr 1fr":count<=3?"1fr 1fr 1fr":"1fr 1fr";
   const pct=names().map((_,i)=>total>0?((tbp[i]||0)/total*100).toFixed(1):(100/count).toFixed(1));
+  const incTbp=names().map((_,i)=>incList().filter(r=>r.paidBy===i).reduce((s,r)=>s+r.amount,0));
   return `
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
@@ -847,15 +856,21 @@ function renderStat(tbp,total,salaries,savGoals,lastSaveds,budgets){
       ${names().map((n,i)=>`<div class="partner-card" style="border-left:3px solid ${COLORS[i%COLORS.length]}">
         <div style="font-size:11px;color:var(--sub)">${label(i)}</div>
         <div style="font-size:18px;font-weight:700;margin-top:4px">NT$ ${(tbp[i]||0).toLocaleString()}</div>
-        <div style="font-size:11px;color:var(--mute);margin-top:2px">佔比 ${pct[i]}%</div>
+        <div style="font-size:11px;color:var(--mute);margin-top:2px">支出佔比 ${pct[i]}%</div>
+        ${incTbp[i]>0?`<div style="font-size:11px;color:var(--green);font-weight:600;margin-top:3px">收入 ＋NT$ ${incTbp[i].toLocaleString()}</div>`:""}
       </div>`).join("")}
     </div>
   </div>
   ${names().map((_,pi)=>{
-    const recs=expList().filter(r=>r.paidBy===pi);
-    if(!recs.length) return `<div class="card"><div class="card-title">${label(pi)}</div><div class="empty">還沒有支出</div></div>`;
-    const map={}; recs.forEach(r=>{map[r.category]=(map[r.category]||0)+r.amount;});
-    return `<div class="card"><div class="card-title">${label(pi)} 的支出</div>${Object.entries(map).map(([cat,amt])=>`<div class="rec-row"><div class="rec-dot" style="background:${CAT_COLORS[CATEGORIES.indexOf(cat)]||"#C4A89A"}"></div><span style="flex:1;font-size:13px">${cat}</span><span class="rec-amt">NT$ ${amt.toLocaleString()}</span></div>`).join("")}</div>`;
+    const erecs=expList().filter(r=>r.paidBy===pi);
+    const irecs=incList().filter(r=>r.paidBy===pi);
+    const expCard=erecs.length
+      ? (()=>{const map={};erecs.forEach(r=>{map[r.category]=(map[r.category]||0)+r.amount;});return `<div class="card"><div class="card-title">${label(pi)} 的支出</div>${Object.entries(map).map(([cat,amt])=>`<div class="rec-row"><div class="rec-dot" style="background:${CAT_COLORS[CATEGORIES.indexOf(cat)]||"#C4A89A"}"></div><span style="flex:1;font-size:13px">${cat}</span><span class="rec-amt">NT$ ${amt.toLocaleString()}</span></div>`).join("")}</div>`;})()
+      : `<div class="card"><div class="card-title">${label(pi)} 的支出</div><div class="empty">還沒有支出</div></div>`;
+    const incCard=irecs.length
+      ? (()=>{const map={};irecs.forEach(r=>{map[r.category]=(map[r.category]||0)+r.amount;});return `<div class="card"><div class="card-title">${label(pi)} 的收入</div>${Object.entries(map).map(([cat,amt])=>{const ci=INCOME_CATEGORIES.indexOf(cat);return `<div class="rec-row"><div class="rec-dot" style="background:${INCOME_CAT_COLORS[ci]||"#8FAF98"}"></div><span style="flex:1;font-size:13px">${cat}</span><span class="rec-amt" style="color:var(--green)">＋ NT$ ${amt.toLocaleString()}</span></div>`;}).join("")}</div>`;})()
+      : "";
+    return expCard+incCard;
   }).join("")}`;
 }
 
@@ -1158,7 +1173,7 @@ function renderTitleModal(){
 }
 
 function renderSettingsModal(){
-  const n=names(),e=emojis();
+  const n=names(),e=emojis(),count=memberCount();
   return `<div class="overlay" id="overlay"><div class="modal-card">
     <div class="modal-handle"></div><div class="modal-title">⚙ 設定</div>
 
